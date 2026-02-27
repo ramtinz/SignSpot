@@ -38,8 +38,8 @@ Private parking companies often place signs in hard-to-see locations, leading to
 ### Installation & Run
 
 ```bash
-# Navigate to project
-cd parking-sign-report
+# Navigate to project (after cloning the `signspot` repo)
+cd signspot
 
 # Run with uv (automatically creates venv and installs dependencies)
 uv run main.py
@@ -76,7 +76,7 @@ python main.py
 ## 📁 Project Structure
 
 ```
-parking-sign-report/
+signspot/
 ├── main.py              # Complete application (~200 lines)
 ├── requirements.txt     # Just NiceGUI
 ├── parking_reports.db   # SQLite database (auto-created)
