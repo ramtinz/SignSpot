@@ -24,3 +24,6 @@ env/
 *_backup.py
 *_old.py
 main_simple.py
+
+# Local notes
+TODO.md
