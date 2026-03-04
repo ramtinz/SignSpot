@@ -206,7 +206,7 @@ init_db()
 
 # Color mapping for markers
 ISSUE_COLORS = {
-    'Paid Parking': 'red',
+    'Paid Parking (Problematic)': 'red',
     'Free Parking': 'green'
 }
 
@@ -334,8 +334,9 @@ if page == "🗺️ Map":
     with st.form("quick_report_form", border=True):
         issue_type = st.selectbox(
             "What's the area?",
-            ["Paid Parking", "Free Parking"],
-            index=0
+            ["Paid Parking (Problematic)", "Free Parking"],
+            index=0,
+            help="Paid Parking = Hidden, faded, damaged, or unclear paid parking signs. Free Parking = Free spots."
         )
         
         description = st.text_area(
@@ -370,10 +371,10 @@ if page == "🗺️ Map":
             """, unsafe_allow_html=True)
         
         with col2:
-            hidden = len([r for r in reports if r[3] == 'Paid Parking'])
+            hidden = len([r for r in reports if r[3] == 'Paid Parking (Problematic)'])
             st.markdown(f"""
             <div class="metric-card">
-                <h3>Paid Areas</h3>
+                <h3>Problematic Paid</h3>
                 <div class="value">{hidden}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -423,8 +424,8 @@ elif page == "➕ Report":
         
         issue_type = st.selectbox(
             "Parking Type",
-            ["Paid Parking", "Free Parking"],
-            help="Select whether this is a paid or free parking area"
+            ["Paid Parking (Problematic)", "Free Parking"],
+            help="Paid Parking = Hidden, faded, damaged, or unclear paid parking signs. Free Parking = Free spots."
         )
         
         description = st.text_area(
