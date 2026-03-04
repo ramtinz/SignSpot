@@ -355,8 +355,6 @@ if page == "🗺️ Map":
     
     with col2:
         if st.button("🔄 Use My Location", key="geolocate", use_container_width=True):
-            st.info("📱 **Location Access Required**\n\nTo use your current location:\n\n**Chrome/Edge:** Click the 🔒 lock icon in the address bar → Location → Allow\n\n**Firefox:** Click the 🛡️ shield icon → Location → Allow\n\n**Safari:** Safari menu → Preferences → Websites → Location → Allow\n\n**Mobile:** Settings → Privacy → Location Services → Browser → While Using")
-            
             # Create a simple HTML component for geolocation
             geolocation_html = """
             <div style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">

@@ -52,24 +52,6 @@ streamlit run main.py
 4. **Add Details** - Use presets or type custom description
 5. **Vote** - Upvote/downvote existing reports to verify accuracy
 
-### 📍 Location Access Setup
-
-To use the "Use My Location" feature:
-
-**Chrome/Edge:**
-- Click the 🔒 lock icon in the address bar
-- Set Location to "Allow"
-
-**Firefox:**
-- Click the 🛡️ shield icon in the address bar
-- Set Location to "Allow"
-
-**Safari:**
-- Safari menu → Preferences → Websites → Location → Allow
-
-**Mobile:**
-- Settings → Privacy → Location Services → Browser → While Using
-
 ## 🛠️ Tech Stack
 
 - **Framework**: Streamlit
