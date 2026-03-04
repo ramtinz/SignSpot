@@ -213,6 +213,10 @@ ISSUE_COLORS = {
     'Free Parking': 'green'
 }
 
+# Copenhagen coordinates
+COPENHAGEN_LAT = 55.6761
+COPENHAGEN_LNG = 12.5683
+
 # Initialize session state for map-based reporting
 if 'report_lat' not in st.session_state:
     st.session_state.report_lat = COPENHAGEN_LAT
