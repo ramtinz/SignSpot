@@ -13,6 +13,109 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS for modern styling
+st.markdown("""
+<style>
+    * {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    [data-testid="stMainBlockContainer"] {
+        padding: 2rem 1rem;
+    }
+    
+    h1, h2, h3 {
+        color: #1a1a2e;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+    
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 3rem 2rem;
+        border-radius: 12px;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+    }
+    
+    .main-header h1 {
+        color: white;
+        font-size: 2.5rem;
+        margin: 0;
+        font-weight: 800;
+    }
+    
+    .main-header p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
+        margin: 0.5rem 0 0 0;
+    }
+    
+    .info-card {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        margin-bottom: 1.5rem;
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 8px;
+        color: white;
+        text-align: center;
+    }
+    
+    .metric-card h3 {
+        color: rgba(255, 255, 255, 0.8);
+        margin: 0;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .metric-card .value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: white;
+        margin: 0.5rem 0 0 0;
+    }
+    
+    [data-testid="stButton"] > button {
+        width: 100%;
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    [data-testid="stButton"] > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        border-radius: 8px 8px 0 0;
+        background-color: #f0f2f6;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #667eea;
+        color: white;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Database setup
 DB_FILE = 'parking_reports.db'
 
@@ -73,25 +176,34 @@ ISSUE_COLORS = {
     'Damaged': 'gray'
 }
 
+# Copenhagen coordinates
+COPENHAGEN_LAT = 55.6761
+COPENHAGEN_LNG = 12.5683
+
 # Header
-st.markdown("# 🅿️ SignSpot")
-st.markdown("### Spot problematic parking signs before you get ticketed")
+st.markdown("""
+<div class="main-header">
+    <h1>🅿️ SignSpot</h1>
+    <p>Spot problematic parking signs before you get ticketed</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Disclaimer
 st.warning("⚠️ **Experimental App - No Liability**: This is an experimental crowdsourced app. We make no guarantees about the accuracy of reports and assume no liability for any parking tickets or issues. Always verify parking signs yourself.")
 
 # Sidebar navigation
-page = st.sidebar.radio("Navigation", ["🗺️ Map View", "➕ Report Issue", "📊 All Reports"])
+st.sidebar.markdown("### Navigation")
+page = st.sidebar.radio("Select View", ["🗺️ Map", "➕ Report", "📊 Reports"], label_visibility="collapsed")
 
-if page == "🗺️ Map View":
-    st.subheader("📍 Parking Sign Issues Map")
+if page == "🗺️ Map":
+    st.subheader("📍 Parking Issues Map - Copenhagen")
     
     # Get all reports
     reports = get_all_reports()
     
-    # Create map centered on San Francisco
+    # Create map centered on Copenhagen
     m = folium.Map(
-        location=[37.7749, -122.4194],
+        location=[COPENHAGEN_LAT, COPENHAGEN_LNG],
         zoom_start=13,
         tiles="OpenStreetMap"
     )
@@ -118,50 +230,78 @@ if page == "🗺️ Map View":
     # Display map
     st_folium(m, width=1400, height=600)
     
-    # Show summary
+    # Show summary stats
     if reports:
         col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            st.metric("Total Reports", len(reports))
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>Total Reports</h3>
+                <div class="value">{len(reports)}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         with col2:
             hidden = len([r for r in reports if r[3] == 'Hidden'])
-            st.metric("Hidden Signs", hidden)
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>Hidden Signs</h3>
+                <div class="value">{hidden}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         with col3:
             unclear = len([r for r in reports if r[3] == 'Unclear'])
-            st.metric("Unclear Signs", unclear)
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>Unclear Signs</h3>
+                <div class="value">{unclear}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         with col4:
-            st.metric("Total Votes", sum([r[5] for r in reports]))
+            total_votes = sum([r[5] for r in reports])
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3>Total Votes</h3>
+                <div class="value">{total_votes}</div>
+            </div>
+            """, unsafe_allow_html=True)
     else:
-        st.info("No reports yet. Be the first to report a parking sign issue!")
+        st.info("📍 No reports yet. Be the first to report a parking sign issue!", icon="ℹ️")
 
-elif page == "➕ Report Issue":
+elif page == "➕ Report":
     st.subheader("Report a Parking Sign Issue")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        latitude = st.number_input("Latitude", value=37.7749, format="%.6f")
-    with col2:
-        longitude = st.number_input("Longitude", value=-122.4194, format="%.6f")
-    
-    issue_type = st.selectbox(
-        "Issue Type",
-        ["Hidden", "Unclear", "Missing", "Damaged"],
-        help="Select the type of parking sign issue"
-    )
-    
-    description = st.text_area(
-        "Description (optional)",
-        placeholder="Describe the issue to help other drivers...",
-        height=100
-    )
-    
-    if st.button("Submit Report", type="primary"):
-        add_report(latitude, longitude, issue_type, description)
-        st.success("✅ Report submitted successfully!")
-        st.balloons()
+    with st.form("report_form", border=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            latitude = st.number_input("Latitude", value=COPENHAGEN_LAT, format="%.6f")
+        with col2:
+            longitude = st.number_input("Longitude", value=COPENHAGEN_LNG, format="%.6f")
+        
+        issue_type = st.selectbox(
+            "Issue Type",
+            ["Hidden", "Unclear", "Missing", "Damaged"],
+            help="Select the type of parking sign issue"
+        )
+        
+        description = st.text_area(
+            "Description (optional)",
+            placeholder="Describe the issue to help other drivers...",
+            height=100
+        )
+        
+        submitted = st.form_submit_button("📤 Submit Report", use_container_width=True)
+        
+        if submitted:
+            add_report(latitude, longitude, issue_type, description)
+            st.success("✅ Report submitted successfully! Thank you for helping the community.", icon="✅")
+            st.balloons()
 
-elif page == "📊 All Reports":
+elif page == "📊 Reports":
     st.subheader("All Parking Sign Reports")
     
     reports = get_all_reports()
@@ -172,7 +312,6 @@ elif page == "📊 All Reports":
         for report in reports:
             report_id, lat, lng, issue_type, desc, votes, created = report
             df_data.append({
-                'ID': report_id,
                 'Type': issue_type,
                 'Location': f"{lat:.4f}, {lng:.4f}",
                 'Description': desc[:50] + "..." if len(desc) > 50 else desc,
@@ -197,21 +336,38 @@ elif page == "📊 All Reports":
         # Filter data
         filtered_df = df[(df['Type'].isin(selected_type)) & (df['Votes'] >= min_votes)]
         
-        st.dataframe(filtered_df, use_container_width=True)
+        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
         
-        # Sort options
-        st.subheader("Top Issues")
-        top_by = st.radio("Sort by:", ["Most Votes", "Most Recent"])
+        # Top issues section
+        st.divider()
+        st.subheader("🔝 Top Issues")
         
-        if top_by == "Most Votes":
-            top_df = df.nlargest(5, 'Votes')
-        else:
-            top_df = df.head(5)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**By Votes**")
+            top_votes = df.nlargest(5, 'Votes')[['Type', 'Description', 'Votes']]
+            st.dataframe(top_votes, use_container_width=True, hide_index=True)
         
-        st.dataframe(top_df, use_container_width=True)
+        with col2:
+            st.markdown("**Most Recent**")
+            recent = df.head(5)[['Type', 'Description', 'Votes']]
+            st.dataframe(recent, use_container_width=True, hide_index=True)
+        
+        # Summary
+        st.divider()
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Reports", len(df))
+        with col2:
+            st.metric("Most Common Issue", df['Type'].mode()[0] if len(df) > 0 else "N/A")
+        with col3:
+            st.metric("Total Community Votes", df['Votes'].sum())
     else:
-        st.info("No reports yet. Be the first to report a parking sign issue!")
+        st.info("📍 No reports yet. Be the first to report a parking sign issue!", icon="ℹ️")
 
 # Footer
 st.divider()
-st.markdown("© 2026 SignSpot. Experimental service - no warranty or liability.")
+st.markdown(
+    "<p style='text-align: center; color: #666; font-size: 0.85rem;'>© 2026 SignSpot. Experimental service - no warranty or liability.</p>",
+    unsafe_allow_html=True
+)
