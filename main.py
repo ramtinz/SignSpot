@@ -131,9 +131,17 @@ def init_db():
             issue_type TEXT NOT NULL,
             description TEXT NOT NULL,
             votes INTEGER DEFAULT 0,
+            flags INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # Add flags column if it doesn't exist (for existing databases)
+    c.execute("PRAGMA table_info(reports)")
+    columns = [column[1] for column in c.fetchall()]
+    if 'flags' not in columns:
+        c.execute('ALTER TABLE reports ADD COLUMN flags INTEGER DEFAULT 0')
+    
     conn.commit()
     conn.close()
 
@@ -141,7 +149,7 @@ def get_all_reports():
     """Fetch all reports from database"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('SELECT id, latitude, longitude, issue_type, description, votes, created_at FROM reports ORDER BY created_at DESC')
+    c.execute('SELECT id, latitude, longitude, issue_type, description, votes, flags, created_at FROM reports ORDER BY created_at DESC')
     reports = c.fetchall()
     conn.close()
     return reports
@@ -165,6 +173,14 @@ def upvote_report(report_id):
     conn.commit()
     conn.close()
 
+def flag_report(report_id):
+    """Flag a report as incorrect/spam"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('UPDATE reports SET flags = flags + 1 WHERE id = ?', (report_id,))
+    conn.commit()
+    conn.close()
+
 # Initialize database
 init_db()
 
@@ -177,9 +193,15 @@ ISSUE_COLORS = {
     'Free Parking': 'green'
 }
 
-# Copenhagen coordinates
-COPENHAGEN_LAT = 55.6761
-COPENHAGEN_LNG = 12.5683
+# Initialize session state for map-based reporting
+if 'report_lat' not in st.session_state:
+    st.session_state.report_lat = COPENHAGEN_LAT
+if 'report_lng' not in st.session_state:
+    st.session_state.report_lng = COPENHAGEN_LNG
+if 'report_type' not in st.session_state:
+    st.session_state.report_type = "Hidden"
+if 'report_desc' not in st.session_state:
+    st.session_state.report_desc = ""
 
 # Header
 st.markdown("""
@@ -211,28 +233,111 @@ if page == "🗺️ Map":
     
     # Add markers for each report
     for report in reports:
-        report_id, lat, lng, issue_type, desc, votes, created = report
+        report_id, lat, lng, issue_type, desc, votes, flags, created = report
         color = ISSUE_COLORS.get(issue_type, 'blue')
+        
+        # Mark flagged reports with orange (if heavily flagged)
+        if flags >= 3:
+            color = 'red'
+            icon_str = 'times-circle'
+        else:
+            icon_str = 'exclamation'
         
         popup_text = f"""
         <b>{issue_type} Sign</b><br>
         {desc if desc else 'No description'}<br>
-        👍 {votes} votes<br>
+        👍 {votes} votes | 🚩 {flags} flags<br>
         <small>{created}</small>
         """
         
         folium.Marker(
             location=[lat, lng],
             popup=folium.Popup(popup_text, max_width=250),
-            icon=folium.Icon(color=color, icon='exclamation'),
+            icon=folium.Icon(color=color, icon=icon_str, prefix='fa'),
             tooltip=f"{issue_type}: {desc[:30]}" if desc else issue_type
         ).add_to(m)
     
-    # Display map
-    st_folium(m, width=1400, height=600)
+    # Add a marker for the current report location if in progress
+    if 'report_in_progress' in st.session_state and st.session_state.report_in_progress:
+        folium.Marker(
+            location=[st.session_state.report_lat, st.session_state.report_lng],
+            icon=folium.Icon(color='blue', icon='pencil', prefix='fa'),
+            popup="📝 Report in progress"
+        ).add_to(m)
+    
+    # Display map with click capture
+    map_data = st_folium(m, width=1400, height=600)
+    
+    # Handle map clicks
+    if map_data and map_data['last_clicked']:
+        st.session_state.report_lat = map_data['last_clicked']['lat']
+        st.session_state.report_lng = map_data['last_clicked']['lng']
+        st.session_state.report_in_progress = True
+        st.info(f"📍 Location selected: {st.session_state.report_lat:.4f}, {st.session_state.report_lng:.4f}")
+        st.info("👉 Scroll down to fill in the report details!", icon="👉")
+    
+    # Report form (always visible for convenience)
+    st.divider()
+    st.markdown("### 📝 Quick Report")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown(f"**Selected Location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
+    
+    with col2:
+        if st.button("🔄 Use My Location", key="geolocate", use_container_width=True):
+            st.info("📱 Enable location access in your browser to use this feature")
+    
+    with st.form("quick_report_form", border=True):
+        issue_type = st.selectbox(
+            "What's the issue?",
+            ["Hidden", "Unclear", "Missing", "Damaged", "Free Parking"],
+            index=["Hidden", "Unclear", "Missing", "Damaged", "Free Parking"].index(st.session_state.report_type)
+        )
+        
+        # Quick description suggestions
+        col1, col2 = st.columns(2)
+        with col1:
+            description = st.text_area(
+                "Details (optional)",
+                placeholder="Add details or just click a preset...",
+                value=st.session_state.report_desc,
+                height=80
+            )
+        
+        with col2:
+            st.markdown("**Quick presets:**")
+            preset_cols = st.columns(2)
+            presets = {
+                "Behind tree 🌳": "Hidden behind trees/bushes",
+                "Faded ⚠️": "Sign is faded/hard to read",
+                "No sign 🚫": "No parking sign here",
+                "Broken 💔": "Sign is damaged/broken",
+                "FREE! 💚": "Free parking available here!",
+                "Verified ✓": "Confirmed by community"
+            }
+            
+            for idx, (preset_label, preset_text) in enumerate(presets.items()):
+                col_idx = idx % 2
+                if preset_cols[col_idx].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
+                    description = preset_text
+                    st.rerun()
+        
+        submitted = st.form_submit_button("🚀 Submit Report", use_container_width=True, type="primary")
+        
+        if submitted:
+            add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, description)
+            st.success("✅ Report submitted! Thank you for helping the community.", icon="✅")
+            st.balloons()
+            st.session_state.report_in_progress = False
+            st.session_state.report_desc = ""
+            st.rerun()
     
     # Show summary stats
     if reports:
+        st.divider()
+        st.markdown("### 📊 Quick Stats")
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
@@ -279,18 +384,21 @@ if page == "🗺️ Map":
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.info("📍 No reports yet. Be the first to report a parking sign issue!", icon="ℹ️")
+        st.info("📍 No reports yet. Click on the map or use the form below to report!", icon="ℹ️")
 
 elif page == "➕ Report":
-    st.subheader("Report a Parking Sign Issue")
+    st.subheader("📝 Report a Parking Issue")
+    st.info("💡 **Tip:** For easier reporting, use the Map view to click a location and submit directly!", icon="💡")
     
-    with st.form("report_form", border=True):
+    with st.form("detailed_report_form", border=True):
+        st.markdown("#### Manual Coordinate Entry")
+        
         col1, col2 = st.columns(2)
         
         with col1:
-            latitude = st.number_input("Latitude", value=COPENHAGEN_LAT, format="%.6f")
+            latitude = st.number_input("Latitude", value=st.session_state.report_lat, format="%.6f")
         with col2:
-            longitude = st.number_input("Longitude", value=COPENHAGEN_LNG, format="%.6f")
+            longitude = st.number_input("Longitude", value=st.session_state.report_lng, format="%.6f")
         
         issue_type = st.selectbox(
             "Issue Type",
@@ -299,17 +407,18 @@ elif page == "➕ Report":
         )
         
         description = st.text_area(
-            "Description (optional)",
-            placeholder="Describe the issue or note about free parking availability...",
+            "Description",
+            placeholder="Describe the issue or free parking details...",
             height=100
         )
         
-        submitted = st.form_submit_button("📤 Submit Report", use_container_width=True)
+        submitted = st.form_submit_button("🚀 Submit Report", use_container_width=True, type="primary")
         
         if submitted:
             add_report(latitude, longitude, issue_type, description)
             st.success("✅ Report submitted successfully! Thank you for helping the community.", icon="✅")
             st.balloons()
+            st.session_state.report_in_progress = False
 
 elif page == "📊 Reports":
     st.subheader("All Parking Sign Reports")
@@ -320,58 +429,101 @@ elif page == "📊 Reports":
         # Create DataFrame
         df_data = []
         for report in reports:
-            report_id, lat, lng, issue_type, desc, votes, created = report
+            report_id, lat, lng, issue_type, desc, votes, flags, created = report
             df_data.append({
+                'ID': report_id,
                 'Type': issue_type,
                 'Location': f"{lat:.4f}, {lng:.4f}",
                 'Description': desc[:50] + "..." if len(desc) > 50 else desc,
                 'Votes': votes,
+                'Flags': flags,
+                'Status': '🚨 Flagged' if flags >= 3 else '✅ OK' if flags == 0 else '⚠️ Disputed',
                 'Reported': created
             })
         
         df = pd.DataFrame(df_data)
         
-        # Filters
-        col1, col2 = st.columns(2)
-        with col1:
-            selected_type = st.multiselect(
-                "Filter by Issue Type",
-                options=df['Type'].unique(),
-                default=df['Type'].unique()
-            )
+        # Tab view for different report types
+        tab1, tab2, tab3 = st.tabs(["📋 All Reports", "🚨 Disputed Reports", "🚩 Flagged Reports"])
         
-        with col2:
-            min_votes = st.slider("Minimum Votes", 0, int(df['Votes'].max()) + 1, 0)
+        with tab1:
+            st.markdown("#### All Community Reports")
+            
+            # Filters
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                selected_type = st.multiselect(
+                    "Filter by Type",
+                    options=df['Type'].unique(),
+                    default=df['Type'].unique(),
+                    key="tab1_type"
+                )
+            
+            with col2:
+                min_votes = st.slider("Min Votes", 0, int(df['Votes'].max()) + 1, 0, key="tab1_votes")
+            
+            with col3:
+                show_disputed = st.checkbox("Hide disputed", value=False, key="tab1_disputed")
+            
+            # Filter data
+            filtered_df = df[(df['Type'].isin(selected_type)) & (df['Votes'] >= min_votes)]
+            if show_disputed:
+                filtered_df = filtered_df[filtered_df['Flags'] < 3]
+            
+            st.dataframe(filtered_df[['Type', 'Location', 'Description', 'Votes', 'Flags', 'Status']], use_container_width=True, hide_index=True)
+            
+            # Flag action
+            st.divider()
+            st.markdown("#### Report Incorrect Information")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                flag_id = st.number_input("Report ID to flag:", min_value=1, step=1)
+            with col2:
+                st.write("")
+                st.write("")
+                if st.button("🚩 Flag as Incorrect", use_container_width=True):
+                    if flag_id in df['ID'].values:
+                        flag_report(flag_id)
+                        st.success(f"✅ Report #{flag_id} flagged! Community review initiated.")
+                        st.rerun()
+                    else:
+                        st.error("Report ID not found!")
         
-        # Filter data
-        filtered_df = df[(df['Type'].isin(selected_type)) & (df['Votes'] >= min_votes)]
+        with tab2:
+            st.markdown("#### ⚠️ Disputed Reports (1-2 flags)")
+            disputed_df = df[(df['Flags'] > 0) & (df['Flags'] < 3)]
+            
+            if len(disputed_df) > 0:
+                st.dataframe(disputed_df[['ID', 'Type', 'Location', 'Description', 'Votes', 'Flags']], use_container_width=True, hide_index=True)
+                
+                st.info("💭 These reports have community concerns. Check them out and vote if you agree/disagree!", icon="💭")
+            else:
+                st.success("✅ No disputed reports!", icon="✅")
         
-        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
-        
-        # Top issues section
-        st.divider()
-        st.subheader("🔝 Top Issues")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("**By Votes**")
-            top_votes = df.nlargest(5, 'Votes')[['Type', 'Description', 'Votes']]
-            st.dataframe(top_votes, use_container_width=True, hide_index=True)
-        
-        with col2:
-            st.markdown("**Most Recent**")
-            recent = df.head(5)[['Type', 'Description', 'Votes']]
-            st.dataframe(recent, use_container_width=True, hide_index=True)
+        with tab3:
+            st.markdown("#### 🚨 Flagged Reports (3+ flags)")
+            flagged_df = df[df['Flags'] >= 3]
+            
+            if len(flagged_df) > 0:
+                st.warning(f"🚨 {len(flagged_df)} report(s) have multiple flags and may be inaccurate or spam.", icon="⚠️")
+                st.dataframe(flagged_df[['ID', 'Type', 'Location', 'Description', 'Votes', 'Flags']], use_container_width=True, hide_index=True)
+            else:
+                st.success("✅ No heavily flagged reports!", icon="✅")
         
         # Summary
         st.divider()
-        col1, col2, col3 = st.columns(3)
+        st.markdown("### 📊 Community Statistics")
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Total Reports", len(df))
         with col2:
-            st.metric("Most Common Issue", df['Type'].mode()[0] if len(df) > 0 else "N/A")
+            st.metric("Community Votes", df['Votes'].sum())
         with col3:
-            st.metric("Total Community Votes", df['Votes'].sum())
+            disputed_count = len(df[(df['Flags'] > 0) & (df['Flags'] < 3)])
+            st.metric("Disputed", disputed_count)
+        with col4:
+            flagged_count = len(df[df['Flags'] >= 3])
+            st.metric("Heavily Flagged", flagged_count)
     else:
         st.info("📍 No reports yet. Be the first to report a parking sign issue!", icon="ℹ️")
 
