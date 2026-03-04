@@ -130,15 +130,27 @@ def init_db():
             longitude REAL NOT NULL,
             issue_type TEXT NOT NULL,
             description TEXT NOT NULL,
-            votes INTEGER DEFAULT 0,
+            upvotes INTEGER DEFAULT 0,
+            downvotes INTEGER DEFAULT 0,
             flags INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Add flags column if it doesn't exist (for existing databases)
+    # Migrate old votes column if it exists
     c.execute("PRAGMA table_info(reports)")
     columns = [column[1] for column in c.fetchall()]
+    
+    if 'votes' in columns and 'upvotes' not in columns:
+        c.execute('ALTER TABLE reports ADD COLUMN upvotes INTEGER DEFAULT 0')
+        c.execute('ALTER TABLE reports ADD COLUMN downvotes INTEGER DEFAULT 0')
+        # Migrate existing votes to upvotes
+        c.execute('UPDATE reports SET upvotes = votes WHERE votes > 0')
+        c.execute('UPDATE reports SET votes = 0')
+    elif 'upvotes' not in columns:
+        c.execute('ALTER TABLE reports ADD COLUMN upvotes INTEGER DEFAULT 0')
+        c.execute('ALTER TABLE reports ADD COLUMN downvotes INTEGER DEFAULT 0')
+    
     if 'flags' not in columns:
         c.execute('ALTER TABLE reports ADD COLUMN flags INTEGER DEFAULT 0')
     
@@ -149,7 +161,7 @@ def get_all_reports():
     """Fetch all reports from database"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('SELECT id, latitude, longitude, issue_type, description, votes, flags, created_at FROM reports ORDER BY created_at DESC')
+    c.execute('SELECT id, latitude, longitude, issue_type, description, upvotes, downvotes, flags, created_at FROM reports ORDER BY created_at DESC')
     reports = c.fetchall()
     conn.close()
     return reports
@@ -166,10 +178,18 @@ def add_report(lat, lng, issue_type, description):
     conn.close()
 
 def upvote_report(report_id):
-    """Increment vote count for a report"""
+    """Upvote a report (agree with validity)"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('UPDATE reports SET votes = votes + 1 WHERE id = ?', (report_id,))
+    c.execute('UPDATE reports SET upvotes = upvotes + 1 WHERE id = ?', (report_id,))
+    conn.commit()
+    conn.close()
+
+def downvote_report(report_id):
+    """Downvote a report (disagree with validity)"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('UPDATE reports SET downvotes = downvotes + 1 WHERE id = ?', (report_id,))
     conn.commit()
     conn.close()
 
@@ -233,7 +253,7 @@ if page == "🗺️ Map":
     
     # Add markers for each report
     for report in reports:
-        report_id, lat, lng, issue_type, desc, votes, flags, created = report
+        report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
         color = ISSUE_COLORS.get(issue_type, 'blue')
         
         # Mark flagged reports with orange (if heavily flagged)
@@ -243,10 +263,13 @@ if page == "🗺️ Map":
         else:
             icon_str = 'exclamation'
         
+        net_votes = upvotes - downvotes
+        
         popup_text = f"""
         <b>{issue_type} Sign</b><br>
         {desc if desc else 'No description'}<br>
-        👍 {votes} votes | 🚩 {flags} flags<br>
+        👍 {upvotes} | 👎 {downvotes} | Net: {net_votes:+d}<br>
+        🚩 {flags} flags<br>
         <small>{created}</small>
         """
         
@@ -367,11 +390,11 @@ if page == "🗺️ Map":
             """, unsafe_allow_html=True)
         
         with col4:
-            total_votes = sum([r[5] for r in reports])
+            total_upvotes = sum([r[5] for r in reports])
             st.markdown(f"""
             <div class="metric-card">
-                <h3>Total Votes</h3>
-                <div class="value">{total_votes}</div>
+                <h3>Community Votes</h3>
+                <div class="value">{total_upvotes}</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -429,13 +452,20 @@ elif page == "📊 Reports":
         # Create DataFrame
         df_data = []
         for report in reports:
-            report_id, lat, lng, issue_type, desc, votes, flags, created = report
+            report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
+            total_votes = upvotes + downvotes
+            net_votes = upvotes - downvotes
+            agreement = round(100 * upvotes / total_votes) if total_votes > 0 else 0
+            
             df_data.append({
                 'ID': report_id,
                 'Type': issue_type,
                 'Location': f"{lat:.4f}, {lng:.4f}",
                 'Description': desc[:50] + "..." if len(desc) > 50 else desc,
-                'Votes': votes,
+                '👍': upvotes,
+                '👎': downvotes,
+                'Net': net_votes,
+                'Agreement': f"{agreement}%" if total_votes > 0 else "—",
                 'Flags': flags,
                 'Status': '🚨 Flagged' if flags >= 3 else '✅ OK' if flags == 0 else '⚠️ Disputed',
                 'Reported': created
@@ -444,7 +474,7 @@ elif page == "📊 Reports":
         df = pd.DataFrame(df_data)
         
         # Tab view for different report types
-        tab1, tab2, tab3 = st.tabs(["📋 All Reports", "🚨 Disputed Reports", "🚩 Flagged Reports"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📋 All Reports", "📊 Vote on Reports", "⚠️ Disputed", "🚨 Flagged"])
         
         with tab1:
             st.markdown("#### All Community Reports")
@@ -460,68 +490,121 @@ elif page == "📊 Reports":
                 )
             
             with col2:
-                min_votes = st.slider("Min Votes", 0, int(df['Votes'].max()) + 1, 0, key="tab1_votes")
+                sort_by = st.selectbox("Sort by", ["Newest", "Most Agreement", "Most Votes", "Most Controversial"], key="tab1_sort")
             
             with col3:
                 show_disputed = st.checkbox("Hide disputed", value=False, key="tab1_disputed")
             
             # Filter data
-            filtered_df = df[(df['Type'].isin(selected_type)) & (df['Votes'] >= min_votes)]
+            filtered_df = df[(df['Type'].isin(selected_type))]
             if show_disputed:
                 filtered_df = filtered_df[filtered_df['Flags'] < 3]
             
-            st.dataframe(filtered_df[['Type', 'Location', 'Description', 'Votes', 'Flags', 'Status']], use_container_width=True, hide_index=True)
+            # Sort
+            if sort_by == "Most Agreement":
+                filtered_df = filtered_df.sort_values('Agreement', ascending=False)
+            elif sort_by == "Most Votes":
+                filtered_df = filtered_df.copy()
+                filtered_df['Total Votes'] = filtered_df['👍'] + filtered_df['👎']
+                filtered_df = filtered_df.sort_values('Total Votes', ascending=False)
+            elif sort_by == "Most Controversial":
+                filtered_df = filtered_df.copy()
+                filtered_df['Controversy'] = (filtered_df['👍'] + filtered_df['👎']).abs() * abs(filtered_df['Agreement'] - 50)
+                filtered_df = filtered_df.sort_values('Controversy', ascending=False)
             
-            # Flag action
-            st.divider()
-            st.markdown("#### Report Incorrect Information")
-            col1, col2, col3 = st.columns(3)
+            st.dataframe(
+                filtered_df[['ID', 'Type', 'Location', 'Description', '👍', '👎', 'Agreement', 'Flags', 'Status']],
+                use_container_width=True,
+                hide_index=True
+            )
+        
+        with tab2:
+            st.markdown("#### 🗳️ Vote on Report Validity")
+            st.info("👍 **Agree** = Report is accurate | 👎 **Disagree** = Report is inaccurate or outdated", icon="ℹ️")
+            
+            col1, col2 = st.columns(2)
+            
             with col1:
-                flag_id = st.number_input("Report ID to flag:", min_value=1, step=1)
+                vote_id = st.number_input("Report ID to vote on:", min_value=1, step=1, key="vote_id")
+            
             with col2:
                 st.write("")
                 st.write("")
-                if st.button("🚩 Flag as Incorrect", use_container_width=True):
-                    if flag_id in df['ID'].values:
-                        flag_report(flag_id)
-                        st.success(f"✅ Report #{flag_id} flagged! Community review initiated.")
-                        st.rerun()
-                    else:
-                        st.error("Report ID not found!")
+                col_agree, col_disagree = st.columns(2)
+                
+                with col_agree:
+                    if st.button("👍 Agree", use_container_width=True, key="upvote_btn"):
+                        if vote_id in df['ID'].values:
+                            upvote_report(vote_id)
+                            st.success(f"✅ Upvoted report #{vote_id}! Thank you for confirming.")
+                            st.rerun()
+                        else:
+                            st.error("Report ID not found!")
+                
+                with col_disagree:
+                    if st.button("👎 Disagree", use_container_width=True, key="downvote_btn"):
+                        if vote_id in df['ID'].values:
+                            downvote_report(vote_id)
+                            st.warning(f"⚠️ Downvoted report #{vote_id}. Community will note the disagreement.")
+                            st.rerun()
+                        else:
+                            st.error("Report ID not found!")
+            
+            # Show voting leaderboard
+            st.divider()
+            st.markdown("#### 🏆 Most Trusted Reports")
+            trust_df = df[df['Flags'] < 3].copy()
+            trust_df = trust_df.sort_values('Net', ascending=False).head(10)
+            st.dataframe(trust_df[['ID', 'Type', '👍', '👎', 'Agreement']], use_container_width=True, hide_index=True)
         
-        with tab2:
+        with tab3:
             st.markdown("#### ⚠️ Disputed Reports (1-2 flags)")
             disputed_df = df[(df['Flags'] > 0) & (df['Flags'] < 3)]
             
             if len(disputed_df) > 0:
-                st.dataframe(disputed_df[['ID', 'Type', 'Location', 'Description', 'Votes', 'Flags']], use_container_width=True, hide_index=True)
+                st.dataframe(
+                    disputed_df[['ID', 'Type', 'Location', 'Description', '👍', '👎', 'Agreement', 'Flags']],
+                    use_container_width=True,
+                    hide_index=True
+                )
                 
-                st.info("💭 These reports have community concerns. Check them out and vote if you agree/disagree!", icon="💭")
+                st.info("💭 These reports have community concerns. Vote to help verify accuracy!", icon="🗳️")
             else:
                 st.success("✅ No disputed reports!", icon="✅")
         
-        with tab3:
+        with tab4:
             st.markdown("#### 🚨 Flagged Reports (3+ flags)")
             flagged_df = df[df['Flags'] >= 3]
             
             if len(flagged_df) > 0:
                 st.warning(f"🚨 {len(flagged_df)} report(s) have multiple flags and may be inaccurate or spam.", icon="⚠️")
-                st.dataframe(flagged_df[['ID', 'Type', 'Location', 'Description', 'Votes', 'Flags']], use_container_width=True, hide_index=True)
+                st.dataframe(
+                    flagged_df[['ID', 'Type', 'Location', 'Description', '👍', '👎', 'Agreement', 'Flags']],
+                    use_container_width=True,
+                    hide_index=True
+                )
             else:
                 st.success("✅ No heavily flagged reports!", icon="✅")
         
         # Summary
         st.divider()
         st.markdown("### 📊 Community Statistics")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        total_upvotes = df['👍'].sum()
+        total_downvotes = df['👎'].sum()
+        total_votes_all = total_upvotes + total_downvotes
+        
         with col1:
             st.metric("Total Reports", len(df))
         with col2:
-            st.metric("Community Votes", df['Votes'].sum())
+            st.metric("Community Upvotes", total_upvotes)
         with col3:
-            disputed_count = len(df[(df['Flags'] > 0) & (df['Flags'] < 3)])
-            st.metric("Disputed", disputed_count)
+            st.metric("Community Downvotes", total_downvotes)
         with col4:
+            agreement_pct = round(100 * total_upvotes / total_votes_all) if total_votes_all > 0 else 0
+            st.metric("Overall Agreement", f"{agreement_pct}%")
+        with col5:
             flagged_count = len(df[df['Flags'] >= 3])
             st.metric("Heavily Flagged", flagged_count)
     else:
