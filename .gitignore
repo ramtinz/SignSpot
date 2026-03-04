@@ -23,7 +23,12 @@ env/
 # Backup files
 *_backup.py
 *_old.py
+main_backup.py
+main_old.py
 main_simple.py
 
-# Local notes
+# Local files
 TODO.md
+DEPLOYMENT.md
+start.sh
+.streamlit/secrets.toml

@@ -1,8 +1,17 @@
-from nicegui import ui, app
+import streamlit as st
 import sqlite3
 from datetime import datetime
-from pathlib import Path
-import json
+import folium
+from streamlit_folium import st_folium
+import pandas as pd
+
+# Page config
+st.set_page_config(
+    page_title="SignSpot - Parking Sign Reporter",
+    page_icon="🅿️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # Database setup
 DB_FILE = 'parking_reports.db'
@@ -18,7 +27,6 @@ def init_db():
             longitude REAL NOT NULL,
             issue_type TEXT NOT NULL,
             description TEXT NOT NULL,
-            photo_path TEXT,
             votes INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -30,180 +38,180 @@ def get_all_reports():
     """Fetch all reports from database"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('SELECT id, latitude, longitude, issue_type, description, photo_path, votes, created_at FROM reports ORDER BY created_at DESC')
+    c.execute('SELECT id, latitude, longitude, issue_type, description, votes, created_at FROM reports ORDER BY created_at DESC')
     reports = c.fetchall()
     conn.close()
     return reports
 
-def add_report(lat, lng, issue_type, description, photo_path=None):
+def add_report(lat, lng, issue_type, description):
     """Add a new report to database"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO reports (latitude, longitude, issue_type, description, photo_path)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (lat, lng, issue_type, description, photo_path))
+        INSERT INTO reports (latitude, longitude, issue_type, description)
+        VALUES (?, ?, ?, ?)
+    ''', (lat, lng, issue_type, description))
+    conn.commit()
+    conn.close()
+
+def upvote_report(report_id):
+    """Increment vote count for a report"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('UPDATE reports SET votes = votes + 1 WHERE id = ?', (report_id,))
     conn.commit()
     conn.close()
 
 # Initialize database
 init_db()
 
-# Issue type colors for map markers
+# Color mapping for markers
 ISSUE_COLORS = {
-    'hidden': 'red',
-    'unclear': 'orange', 
-    'missing': 'purple',
-    'damaged': 'brown'
+    'Hidden': 'red',
+    'Unclear': 'orange',
+    'Missing': 'purple',
+    'Damaged': 'gray'
 }
 
-@ui.page('/')
-async def main_page():
-    """Main application page"""
+# Header
+st.markdown("# 🅿️ SignSpot")
+st.markdown("### Spot problematic parking signs before you get ticketed")
+
+# Disclaimer
+st.warning("⚠️ **Experimental App - No Liability**: This is an experimental crowdsourced app. We make no guarantees about the accuracy of reports and assume no liability for any parking tickets or issues. Always verify parking signs yourself.")
+
+# Sidebar navigation
+page = st.sidebar.radio("Navigation", ["🗺️ Map View", "➕ Report Issue", "📊 All Reports"])
+
+if page == "🗺️ Map View":
+    st.subheader("📍 Parking Sign Issues Map")
     
-    def create_markers_js():
-        """Generate JavaScript for map markers"""
-        reports = get_all_reports()
-        markers_data = []
+    # Get all reports
+    reports = get_all_reports()
+    
+    # Create map centered on San Francisco
+    m = folium.Map(
+        location=[37.7749, -122.4194],
+        zoom_start=13,
+        tiles="OpenStreetMap"
+    )
+    
+    # Add markers for each report
+    for report in reports:
+        report_id, lat, lng, issue_type, desc, votes, created = report
+        color = ISSUE_COLORS.get(issue_type, 'blue')
         
+        popup_text = f"""
+        <b>{issue_type} Sign</b><br>
+        {desc if desc else 'No description'}<br>
+        👍 {votes} votes<br>
+        <small>{created}</small>
+        """
+        
+        folium.Marker(
+            location=[lat, lng],
+            popup=folium.Popup(popup_text, max_width=250),
+            icon=folium.Icon(color=color, icon='exclamation'),
+            tooltip=f"{issue_type}: {desc[:30]}" if desc else issue_type
+        ).add_to(m)
+    
+    # Display map
+    st_folium(m, width=1400, height=600)
+    
+    # Show summary
+    if reports:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Reports", len(reports))
+        with col2:
+            hidden = len([r for r in reports if r[3] == 'Hidden'])
+            st.metric("Hidden Signs", hidden)
+        with col3:
+            unclear = len([r for r in reports if r[3] == 'Unclear'])
+            st.metric("Unclear Signs", unclear)
+        with col4:
+            st.metric("Total Votes", sum([r[5] for r in reports]))
+    else:
+        st.info("No reports yet. Be the first to report a parking sign issue!")
+
+elif page == "➕ Report Issue":
+    st.subheader("Report a Parking Sign Issue")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        latitude = st.number_input("Latitude", value=37.7749, format="%.6f")
+    with col2:
+        longitude = st.number_input("Longitude", value=-122.4194, format="%.6f")
+    
+    issue_type = st.selectbox(
+        "Issue Type",
+        ["Hidden", "Unclear", "Missing", "Damaged"],
+        help="Select the type of parking sign issue"
+    )
+    
+    description = st.text_area(
+        "Description (optional)",
+        placeholder="Describe the issue to help other drivers...",
+        height=100
+    )
+    
+    if st.button("Submit Report", type="primary"):
+        add_report(latitude, longitude, issue_type, description)
+        st.success("✅ Report submitted successfully!")
+        st.balloons()
+
+elif page == "📊 All Reports":
+    st.subheader("All Parking Sign Reports")
+    
+    reports = get_all_reports()
+    
+    if reports:
+        # Create DataFrame
+        df_data = []
         for report in reports:
-            report_id, lat, lng, issue_type, desc, photo, votes, created = report
-            color = ISSUE_COLORS.get(issue_type, 'blue')
-            
-            popup_html = f'''
-                <div style="min-width: 200px;">
-                    <h4 style="margin: 0 0 8px 0;">{issue_type.title()} Sign</h4>
-                    <p style="margin: 0 0 8px 0;">{desc if desc else 'No description'}</p>
-                    <div style="padding-top: 8px; border-top: 1px solid #ddd;">
-                        <span>👍 {votes} votes</span>
-                    </div>
-                </div>
-            '''
-            
-            markers_data.append({
-                'lat': lat,
-                'lng': lng,
-                'color': color,
-                'popup': popup_html
+            report_id, lat, lng, issue_type, desc, votes, created = report
+            df_data.append({
+                'ID': report_id,
+                'Type': issue_type,
+                'Location': f"{lat:.4f}, {lng:.4f}",
+                'Description': desc[:50] + "..." if len(desc) > 50 else desc,
+                'Votes': votes,
+                'Reported': created
             })
         
-        return json.dumps(markers_data)
-    
-    # Header
-    with ui.header().classes('items-center justify-between bg-blue-grey-9'):
-        ui.label('🅿️ SignSpot').classes('text-h5')
-        ui.label('Spot problematic parking signs before you get ticketed').classes('text-subtitle2 opacity-70')
-    
-    # Disclaimer banner
-    with ui.card().classes('w-full bg-orange-1 border-l-4 border-orange-5'):
-        ui.label('⚠️ Experimental App - No Liability').classes('text-subtitle2 font-bold text-orange-9')
-        ui.label('This is an experimental crowdsourced app. We make no guarantees about the accuracy of reports and assume no liability for any parking tickets or issues. Always verify parking signs yourself.').classes('text-caption text-grey-8')
-    
-    # Map
-    ui.add_head_html('<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />')
-    ui.add_head_html('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>')
-    
-    map_div = ui.html('<div id="map" style="height: 60vh; width: 100%;"></div>').classes('w-full')
-    
-    def update_map():
-        """Update the map with current reports"""
-        markers_json = create_markers_js()
+        df = pd.DataFrame(df_data)
         
-        map_script = f'''
-            var map = L.map('map').setView([37.7749, -122.4194], 13);
-            
-            L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 19
-            }}).addTo(map);
-            
-            const iconUrls = {{
-                red: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                orange: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
-                purple: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-violet.png',
-                brown: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-grey.png',
-                blue: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png'
-            }};
-            
-            const markers = {markers_json};
-            markers.forEach(marker => {{
-                const icon = L.icon({{
-                    iconUrl: iconUrls[marker.color] || iconUrls.blue,
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    shadowSize: [41, 41]
-                }});
-                
-                L.marker([marker.lat, marker.lng], {{icon: icon}})
-                    .bindPopup(marker.popup)
-                    .addTo(map);
-            }});
-            
-            map.on('click', function(e) {{
-                window.location.href = '/report?lat=' + e.latlng.lat + '&lng=' + e.latlng.lng;
-            }});
-        '''
+        # Filters
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_type = st.multiselect(
+                "Filter by Issue Type",
+                options=df['Type'].unique(),
+                default=df['Type'].unique()
+            )
         
-        ui.run_javascript(map_script)
-    
-    ui.timer(0.1, update_map, once=True)
-    
-    # Instructions
-    with ui.card().classes('w-full mt-4'):
-        ui.label('📍 Click anywhere on the map to report a parking sign issue').classes('text-subtitle1')
-    
-    # Footer info card
-    with ui.card().classes('w-full mt-2 bg-grey-1'):
-        ui.label('© 2026 SignSpot. Experimental service - no warranty or liability.').classes('text-caption text-grey-7')
+        with col2:
+            min_votes = st.slider("Minimum Votes", 0, int(df['Votes'].max()) + 1, 0)
+        
+        # Filter data
+        filtered_df = df[(df['Type'].isin(selected_type)) & (df['Votes'] >= min_votes)]
+        
+        st.dataframe(filtered_df, use_container_width=True)
+        
+        # Sort options
+        st.subheader("Top Issues")
+        top_by = st.radio("Sort by:", ["Most Votes", "Most Recent"])
+        
+        if top_by == "Most Votes":
+            top_df = df.nlargest(5, 'Votes')
+        else:
+            top_df = df.head(5)
+        
+        st.dataframe(top_df, use_container_width=True)
+    else:
+        st.info("No reports yet. Be the first to report a parking sign issue!")
 
-@ui.page('/report')
-async def report_page(lat: float, lng: float):
-    """Report submission page"""
-    
-    with ui.header().classes('items-center bg-blue-grey-9'):
-        ui.link('← Back to SignSpot', '/').classes('text-white')
-        ui.label('Report Issue').classes('text-h5 ml-4')
-    
-    with ui.column().classes('w-full max-w-2xl mx-auto p-4'):
-        
-        ui.label(f'Location: {lat:.6f}, {lng:.6f}').classes('text-body2 text-grey-7 mb-4')
-        
-        with ui.card().classes('w-full'):
-            ui.label('Report Parking Sign Issue').classes('text-h6 mb-4')
-            
-            issue_type = ui.select(
-                label='Issue Type',
-                options={
-                    'hidden': 'Hidden (behind bushes, trees, etc.)',
-                    'unclear': 'Unclear (faded, confusing)',
-                    'missing': 'Missing (should be there)',
-                    'damaged': 'Damaged (broken, graffiti)'
-                },
-                value='hidden'
-            ).classes('w-full mb-4')
-            
-            description = ui.textarea(
-                label='Description (optional)',
-                placeholder='Describe the issue to help other drivers...'
-            ).classes('w-full mb-4')
-            
-            async def submit_report():
-                desc_text = description.value if description.value else ''
-                add_report(lat, lng, issue_type.value, desc_text)
-                ui.notify('Report submitted successfully!', type='positive')
-                await ui.navigate.to('/')
-            
-            with ui.row().classes('w-full justify-end gap-2'):
-                ui.button('Cancel', on_click=lambda: ui.navigate.to('/')).props('flat')
-                ui.button('Submit Report', on_click=submit_report).props('color=primary')
-
-# Run the app
-if __name__ in {'__main__', '__mp_main__'}:
-    ui.run(
-        title='SignSpot - Parking Sign Reporter',
-        port=8081,
-        reload=True,
-        show=True
-    )
+# Footer
+st.divider()
+st.markdown("© 2026 SignSpot. Experimental service - no warranty or liability.")
