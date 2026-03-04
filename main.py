@@ -4,6 +4,7 @@ from datetime import datetime
 import folium
 from streamlit_folium import st_folium
 import pandas as pd
+import streamlit_js_eval
 
 # Page config
 st.set_page_config(
@@ -300,6 +301,49 @@ if page == "🗺️ Map":
         st.info(f"📍 Location selected: {st.session_state.report_lat:.4f}, {st.session_state.report_lng:.4f}")
         st.info("👉 Scroll down to fill in the report details!", icon="👉")
     
+    # Show reports near clicked location for voting
+    if map_data and map_data['last_clicked']:
+        clicked_lat = map_data['last_clicked']['lat']
+        clicked_lng = map_data['last_clicked']['lng']
+        
+        # Find reports within ~50 meters of click
+        nearby_reports = []
+        for report in reports:
+            report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
+            # Rough distance calculation (not accurate but good enough for UI)
+            distance = ((lat - clicked_lat)**2 + (lng - clicked_lng)**2)**0.5
+            if distance < 0.001:  # Roughly 100 meters
+                nearby_reports.append(report)
+        
+        if nearby_reports:
+            st.divider()
+            st.markdown("### 🗳️ Vote on Nearby Reports")
+            st.info("Found reports near your clicked location. Vote to confirm accuracy!", icon="🗳️")
+            
+            for report in nearby_reports:
+                report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
+                net_votes = upvotes - downvotes
+                
+                col1, col2, col3, col4, col5 = st.columns([2, 2, 1, 1, 1])
+                with col1:
+                    st.write(f"**{issue_type}**")
+                with col2:
+                    st.write(f"{desc[:40]}..." if len(desc) > 40 else desc)
+                with col3:
+                    if st.button("👍", key=f"map_upvote_{report_id}", help="Agree with this report"):
+                        upvote_report(report_id)
+                        st.success(f"✅ Upvoted!")
+                        st.rerun()
+                with col4:
+                    if st.button("👎", key=f"map_downvote_{report_id}", help="Disagree with this report"):
+                        downvote_report(report_id)
+                        st.warning(f"⚠️ Downvoted.")
+                        st.rerun()
+                with col5:
+                    st.write(f"{upvotes}/{downvotes}")
+                
+                st.divider()
+    
     # Report form (always visible for convenience)
     st.divider()
     st.markdown("### 📝 Quick Report")
@@ -311,7 +355,61 @@ if page == "🗺️ Map":
     
     with col2:
         if st.button("🔄 Use My Location", key="geolocate", use_container_width=True):
-            st.info("📱 Enable location access in your browser to use this feature")
+            st.info("📱 **Location Access Required**\n\nTo use your current location:\n\n**Chrome/Edge:** Click the 🔒 lock icon in the address bar → Location → Allow\n\n**Firefox:** Click the 🛡️ shield icon → Location → Allow\n\n**Safari:** Safari menu → Preferences → Websites → Location → Allow\n\n**Mobile:** Settings → Privacy → Location Services → Browser → While Using")
+            
+            # Try to get geolocation using JavaScript
+            location_data = streamlit_js_eval.js_eval("""
+                new Promise((resolve, reject) => {
+                    if (!navigator.geolocation) {
+                        resolve({error: "Geolocation not supported by this browser"});
+                        return;
+                    }
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            resolve({
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude,
+                                accuracy: position.coords.accuracy
+                            });
+                        },
+                        (error) => {
+                            let errorMsg = "Location access failed";
+                            switch(error.code) {
+                                case error.PERMISSION_DENIED:
+                                    errorMsg = "Location access denied. Please enable location permissions in your browser.";
+                                    break;
+                                case error.POSITION_UNAVAILABLE:
+                                    errorMsg = "Location information unavailable. Check your GPS/network connection.";
+                                    break;
+                                case error.TIMEOUT:
+                                    errorMsg = "Location request timed out. Please try again.";
+                                    break;
+                            }
+                            resolve({error: errorMsg});
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 15000,
+                            maximumAge: 300000
+                        }
+                    );
+                });
+            """)
+            
+            if location_data:
+                if 'error' in location_data:
+                    st.error(f"❌ {location_data['error']}")
+                else:
+                    lat = location_data['lat']
+                    lng = location_data['lng']
+                    accuracy = location_data.get('accuracy', 'unknown')
+                    st.session_state.report_lat = lat
+                    st.session_state.report_lng = lng
+                    st.success(f"✅ Location found: {lat:.6f}, {lng:.6f} (accuracy: {accuracy:.0f}m)")
+                    st.rerun()
+            else:
+                st.warning("⚠️ Location request in progress... Click the button again if it doesn't respond.")
     st.markdown("**Quick presets:**")
     preset_cols = st.columns(3)
     presets = {
@@ -319,8 +417,7 @@ if page == "🗺️ Map":
         "Faded sign ⚠️": "Sign is faded/hard to read",
         "No sign 🚫": "Should have a parking sign here",
         "Broken sign 💔": "Sign is damaged/broken",
-        "FREE parking! 💚": "Free parking available here",
-        "Verified ✓": "Confirmed by community"
+        "FREE parking! 💚": "Free parking available here"
     }
     
     selected_preset = None
@@ -511,15 +608,37 @@ elif page == "📊 Reports":
                 filtered_df['Controversy'] = (filtered_df['👍'] + filtered_df['👎']).abs() * abs(filtered_df['Agreement'] - 50)
                 filtered_df = filtered_df.sort_values('Controversy', ascending=False)
             
-            st.dataframe(
-                filtered_df[['ID', 'Type', 'Location', 'Description', '👍', '👎', 'Agreement', 'Flags', 'Status']],
-                use_container_width=True,
-                hide_index=True
-            )
+            # Display table with voting buttons
+            st.markdown("**Click 👍 or 👎 to vote on report accuracy:**")
+            
+            for idx, row in filtered_df.iterrows():
+                col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 3, 1, 1, 1])
+                
+                with col1:
+                    st.write(f"**{row['ID']}**")
+                with col2:
+                    st.write(f"{row['Type']}")
+                with col3:
+                    st.write(f"{row['Description']}")
+                with col4:
+                    if st.button("👍", key=f"upvote_{row['ID']}", help="Agree with this report"):
+                        upvote_report(row['ID'])
+                        st.success(f"✅ Upvoted report #{row['ID']}!")
+                        st.rerun()
+                with col5:
+                    if st.button("👎", key=f"downvote_{row['ID']}", help="Disagree with this report"):
+                        downvote_report(row['ID'])
+                        st.warning(f"⚠️ Downvoted report #{row['ID']}.")
+                        st.rerun()
+                with col6:
+                    st.write(f"{row['👍']}/{row['👎']}")
+                
+                st.divider()
         
         with tab2:
             st.markdown("#### 🗳️ Vote on Report Validity")
             st.info("👍 **Agree** = Report is accurate | 👎 **Disagree** = Report is inaccurate or outdated", icon="ℹ️")
+            st.markdown("**Use the 'All Reports' tab above for easy voting, or enter a specific report ID below:**")
             
             col1, col2 = st.columns(2)
             

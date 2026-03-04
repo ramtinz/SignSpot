@@ -47,10 +47,28 @@ streamlit run main.py
 ## 📖 How to Use
 
 1. **Map View** - See all parking reports on the map
-2. **Click Location** - Select where you want to report
+2. **Click Location** - Select where you want to report, or use "🔄 Use My Location" for current GPS position
 3. **Choose Type** - Problematic Paid Parking or Free Parking
 4. **Add Details** - Use presets or type custom description
 5. **Vote** - Upvote/downvote existing reports to verify accuracy
+
+### 📍 Location Access Setup
+
+To use the "Use My Location" feature:
+
+**Chrome/Edge:**
+- Click the 🔒 lock icon in the address bar
+- Set Location to "Allow"
+
+**Firefox:**
+- Click the 🛡️ shield icon in the address bar
+- Set Location to "Allow"
+
+**Safari:**
+- Safari menu → Preferences → Websites → Location → Allow
+
+**Mobile:**
+- Settings → Privacy → Location Services → Browser → While Using
 
 ## 🛠️ Tech Stack
 
