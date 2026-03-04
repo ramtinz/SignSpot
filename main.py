@@ -4,7 +4,7 @@ from datetime import datetime
 import folium
 from streamlit_folium import st_folium
 import pandas as pd
-import streamlit_js_eval
+import streamlit.components.v1 as components
 
 # Page config
 st.set_page_config(
@@ -357,59 +357,91 @@ if page == "🗺️ Map":
         if st.button("🔄 Use My Location", key="geolocate", use_container_width=True):
             st.info("📱 **Location Access Required**\n\nTo use your current location:\n\n**Chrome/Edge:** Click the 🔒 lock icon in the address bar → Location → Allow\n\n**Firefox:** Click the 🛡️ shield icon → Location → Allow\n\n**Safari:** Safari menu → Preferences → Websites → Location → Allow\n\n**Mobile:** Settings → Privacy → Location Services → Browser → While Using")
             
-            # Try to get geolocation using JavaScript
-            location_data = streamlit_js_eval.js_eval("""
-                new Promise((resolve, reject) => {
-                    if (!navigator.geolocation) {
-                        resolve({error: "Geolocation not supported by this browser"});
-                        return;
-                    }
-                    
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            resolve({
-                                lat: position.coords.latitude,
-                                lng: position.coords.longitude,
-                                accuracy: position.coords.accuracy
-                            });
-                        },
-                        (error) => {
-                            let errorMsg = "Location access failed";
-                            switch(error.code) {
-                                case error.PERMISSION_DENIED:
-                                    errorMsg = "Location access denied. Please enable location permissions in your browser.";
-                                    break;
-                                case error.POSITION_UNAVAILABLE:
-                                    errorMsg = "Location information unavailable. Check your GPS/network connection.";
-                                    break;
-                                case error.TIMEOUT:
-                                    errorMsg = "Location request timed out. Please try again.";
-                                    break;
-                            }
-                            resolve({error: errorMsg});
-                        },
-                        {
-                            enableHighAccuracy: true,
-                            timeout: 15000,
-                            maximumAge: 300000
-                        }
-                    );
-                });
-            """)
+            # Create a simple HTML component for geolocation
+            geolocation_html = """
+            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
+                <p style="margin: 0; font-weight: bold;">📍 Click "Get Location" below:</p>
+                <button onclick="getLocation()" style="background-color: #ff4b4b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 5px;">Get My Location</button>
+                <p id="location-status" style="margin: 5px 0; font-size: 14px; color: #666;">Click the button to get your current location</p>
+            </div>
             
-            if location_data:
-                if 'error' in location_data:
-                    st.error(f"❌ {location_data['error']}")
-                else:
-                    lat = location_data['lat']
-                    lng = location_data['lng']
-                    accuracy = location_data.get('accuracy', 'unknown')
+            <script>
+            function getLocation() {
+                const statusEl = document.getElementById('location-status');
+                statusEl.textContent = 'Requesting location access...';
+                statusEl.style.color = '#ffa500';
+                
+                if (!navigator.geolocation) {
+                    statusEl.textContent = 'Geolocation not supported by this browser';
+                    statusEl.style.color = '#ff4b4b';
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const accuracy = Math.round(position.coords.accuracy);
+                        
+                        // Store in sessionStorage for Streamlit to access
+                        sessionStorage.setItem('user_lat', lat.toString());
+                        sessionStorage.setItem('user_lng', lng.toString());
+                        sessionStorage.setItem('user_accuracy', accuracy.toString());
+                        
+                        statusEl.textContent = `✅ Location found: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${accuracy}m)`;
+                        statusEl.style.color = '#28a745';
+                        
+                        // Reload the page to update Streamlit with new location
+                        setTimeout(() => window.location.reload(), 1500);
+                    },
+                    function(error) {
+                        let errorMsg = 'Location access failed';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMsg = 'Location access denied. Please enable location permissions.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMsg = 'Location unavailable. Check GPS/network.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMsg = 'Location request timed out.';
+                                break;
+                        }
+                        statusEl.textContent = '❌ ' + errorMsg;
+                        statusEl.style.color = '#ff4b4b';
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 300000
+                    }
+                );
+            }
+            </script>
+            """
+            
+            components.html(geolocation_html, height=120)
+            
+            # Check if location was stored in sessionStorage
+            if 'user_lat' in st.session_state and 'user_lng' in st.session_state:
+                try:
+                    lat = float(st.session_state.user_lat)
+                    lng = float(st.session_state.user_lng)
+                    accuracy = st.session_state.get('user_accuracy', 'unknown')
+                    
                     st.session_state.report_lat = lat
                     st.session_state.report_lng = lng
-                    st.success(f"✅ Location found: {lat:.6f}, {lng:.6f} (accuracy: {accuracy:.0f}m)")
+                    
+                    # Clear the stored location
+                    del st.session_state.user_lat
+                    del st.session_state.user_lng
+                    if 'user_accuracy' in st.session_state:
+                        del st.session_state.user_accuracy
+                    
+                    st.success(f"✅ Location set: {lat:.6f}, {lng:.6f} (±{accuracy}m)")
                     st.rerun()
-            else:
-                st.warning("⚠️ Location request in progress... Click the button again if it doesn't respond.")
+                except (ValueError, TypeError):
+                    st.error("❌ Error processing location data")
     st.markdown("**Quick presets:**")
     preset_cols = st.columns(3)
     presets = {
