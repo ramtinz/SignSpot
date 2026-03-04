@@ -173,7 +173,8 @@ ISSUE_COLORS = {
     'Hidden': 'red',
     'Unclear': 'orange',
     'Missing': 'purple',
-    'Damaged': 'gray'
+    'Damaged': 'gray',
+    'Free Parking': 'green'
 }
 
 # Copenhagen coordinates
@@ -232,7 +233,7 @@ if page == "🗺️ Map":
     
     # Show summary stats
     if reports:
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
             st.markdown(f"""
@@ -268,6 +269,15 @@ if page == "🗺️ Map":
                 <div class="value">{total_votes}</div>
             </div>
             """, unsafe_allow_html=True)
+        
+        with col5:
+            free_parking = len([r for r in reports if r[3] == 'Free Parking'])
+            st.markdown(f"""
+            <div class="metric-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <h3>Free Spots</h3>
+                <div class="value">{free_parking}</div>
+            </div>
+            """, unsafe_allow_html=True)
     else:
         st.info("📍 No reports yet. Be the first to report a parking sign issue!", icon="ℹ️")
 
@@ -284,13 +294,13 @@ elif page == "➕ Report":
         
         issue_type = st.selectbox(
             "Issue Type",
-            ["Hidden", "Unclear", "Missing", "Damaged"],
-            help="Select the type of parking sign issue"
+            ["Hidden", "Unclear", "Missing", "Damaged", "Free Parking"],
+            help="Select the type of parking sign issue or free parking spot"
         )
         
         description = st.text_area(
             "Description (optional)",
-            placeholder="Describe the issue to help other drivers...",
+            placeholder="Describe the issue or note about free parking availability...",
             height=100
         )
         
