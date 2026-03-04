@@ -1,148 +1,186 @@
 # 🅿️ SignSpot
 
-> **A crowdsourced web app to help drivers spot problematic parking signs before getting ticketed**
+> **A crowdsourced web app to help drivers find free parking and avoid paid areas**
 
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28-red.svg)](https://streamlit.io/)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
-[![NiceGUI](https://img.shields.io/badge/NiceGUI-latest-green.svg)](https://nicegui.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Demo Concept**: Community-driven platform for reporting and discovering parking signs that are hidden, unclear, missing, or damaged.
+**SignSpot**: Community-driven platform for reporting and discovering paid parking areas and free parking spots in Copenhagen.
 
 ## 💡 The Problem
 
-Private parking companies often place signs in hard-to-see locations, leading to unfair parking tickets. This app addresses that by crowdsourcing problematic sign locations.
+Drivers in Copenhagen waste time looking for parking and often unknowingly park in paid areas, resulting in expensive tickets. This app crowdsources this information to help everyone find parking quickly.
 
 ## 🎯 Solution
 
-- **Interactive map** using OpenStreetMap (no API keys needed)
-- **Simple reporting** - click map location, select issue type, submit
-- **Visual markers** - color-coded by issue severity
-- **Lightweight** - Single Python file, SQLite database, no complex setup
+- **Interactive map** - Real-time reports of parking areas
+- **Simple reporting** - Click map, choose type (Paid/Free), submit
+- **Community voting** - Verify accuracy of reports
+- **Lightweight** - Single Python file, SQLite database
 
 ## ✨ Features
 
-- 🗺️ **Interactive OpenStreetMap** - Click to report issues
-- 📍 **Location-based reports** - Pin exact problem locations  
-- 📸 **Categorized issues** - Hidden, unclear, missing, damaged
-- 👍 **Community voting** - Confirm problematic signs
-- 💾 **SQLite database** - No external database needed
-- 🚀 **Single Python file** - Simple and lightweight
+- 🗺️ **Interactive Map** - Click to select location and submit reports instantly
+- 📍 **Real-time Reports** - See all parking areas reported by the community
+- 🔴🟢 **Clear Categories** - Paid Parking (red) | Free Parking (green)
+- 👍👎 **Upvote/Downvote** - Vote on report accuracy
+- 🚩 **Flag System** - Report incorrect or spam submissions
+- 📊 **Community Stats** - View voting agreement and trust scores
+- 💾 **SQLite Database** - Persistent data storage
+- 🎨 **Modern UI** - Beautiful gradient design with Streamlit
 
 ## 🏃 Quick Start
 
 ### Prerequisites
 
-- Python 3.8 or higher (check: `python3 --version`)
-- uv (install: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- Python 3.8 or higher
+- pip (Python package manager)
 
-### Installation & Run
-
-```bash
-# Navigate to project (after cloning the `signspot` repo)
-cd signspot
-
-# Run with uv (automatically creates venv and installs dependencies)
-uv run main.py
-```
-
-**That's it!** The app will open automatically at `http://localhost:8080`
-
-uv handles everything automatically - virtual environment, dependencies, and running the app.
-
-### Alternative (without uv)
+### Installation & Run Locally
 
 ```bash
+# Clone the repository
+git clone https://github.com/ramtinz/SignSpot.git
+cd SignSpot
+
+# Create virtual environment
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
-python main.py
+
+# Run the app
+streamlit run main.py
 ```
+
+**That's it!** The app opens at `http://localhost:8501`
+
+## 🌐 Live Deployment
+
+**Live at:** [SignSpot on Streamlit Cloud](https://signspot.streamlit.app)
+
+### Deploy Your Own (Free)
+
+1. Push code to GitHub
+2. Go to [Streamlit Cloud](https://streamlit.io/cloud)
+3. Connect your repo
+4. Deploy with one click!
+
+The app auto-deploys on every git push. No servers to manage, always-on hosting.
 
 ## 📖 How to Use
 
-1. **View reports** - See all parking sign issues on the map (colored markers)
-2. **Report an issue** - Click anywhere on the map
-3. **Fill the form** - Select issue type and describe the problem
-4. **Submit** - Your report appears immediately on the map
-5. **Vote** - Click existing markers to view details and vote
+### 🗺️ Map View
+1. **Browse** - See all parking reports on the map
+2. **Click location** - Select where you want to report
+3. **Fill form** - Choose Paid/Free, add details, click preset or type
+4. **Submit** - Report appears immediately
 
-## 🎨 Issue Types
+### 📊 Vote on Reports
+1. Go to "Reports" tab
+2. Click "Vote on Reports"
+3. Enter report ID
+4. Click 👍 (Agree) or 👎 (Disagree)
+5. Help community verify accuracy!
 
-- 🔴 **Hidden** - Behind bushes, trees, or obstacles
-- 🟠 **Unclear** - Faded, confusing wording
-- 🟣 **Missing** - Should be there but isn't
-- 🟤 **Damaged** - Broken, vandalized, graffiti
+### 🚩 Flag Incorrect Reports
+1. Go to "Reports" tab
+2. Find the report ID
+3. Enter ID in "All Reports" tab
+4. Flag if inaccurate (3+ flags = marked as disputed)
+
+## 🎨 Parking Types
+
+- 🔴 **Paid Parking** - Areas with paid parking (be aware of tickets!)
+- 🟢 **Free Parking** - Free parking available (great find!)
+
+## 📱 Quick Presets
+
+One-click preset descriptions:
+- "Hidden sign 🌳" - Sign behind trees/bushes
+- "Faded sign ⚠️" - Sign is faded/hard to read
+- "No sign 🚫" - Should have a sign here
+- "Broken sign 💔" - Sign is damaged
+- "FREE parking! 💚" - Free parking spot
+- "Verified ✓" - Confirmed by community
 
 ## 📁 Project Structure
 
 ```
-signspot/
-├── main.py              # Complete application (~200 lines)
-├── requirements.txt     # Just NiceGUI
+SignSpot/
+├── main.py              # Complete Streamlit app
+├── requirements.txt     # Dependencies
 ├── parking_reports.db   # SQLite database (auto-created)
-└── README.md
+├── README.md            # This file
+└── .gitignore          # Git ignore rules
 ```
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [NiceGUI](https://nicegui.io/) - Python web UI framework
-- **Maps**: Leaflet.js + OpenStreetMap (no API keys!)
+- **Framework**: [Streamlit](https://streamlit.io/) - Python web framework
+- **Maps**: [Folium](https://folium.readthedocs.io/) + [OpenStreetMap](https://www.openstreetmap.org/)
 - **Database**: SQLite (built into Python)
-- **Frontend**: Automatic (handled by NiceGUI)
+- **Styling**: Custom CSS with Streamlit markdown
+- **Hosting**: Streamlit Cloud (free tier)
 
-## 🌐 Deployment
+## 📊 Features Explained
 
-Deploy for free on:
-- **Railway** - `railway up`
-- **Render** - Connect GitHub repo
-- **PythonAnywhere** - Upload and run
-- **Fly.io** - `fly launch`
+### Voting System
+- **Upvotes 👍** - "This report is accurate"
+- **Downvotes 👎** - "This report is inaccurate/outdated"
+- **Agreement %** - Shows how much the community agrees
+- **Net Score** - Upvotes minus downvotes
 
-## 💡 Why NiceGUI?
+### Flagging System
+- **0 flags** - ✅ OK
+- **1-2 flags** - ⚠️ Disputed (community disagrees)
+- **3+ flags** - 🚨 Flagged (likely inaccurate or spam)
 
-- ✅ No Node.js, no frontend/backend split
-- ✅ One language (Python) for everything
-- ✅ Built-in reactive UI components
-- ✅ Native Leaflet map support
-- ✅ Perfect for rapid prototyping
-- ✅ Easy to extend and customize
+### Statistics
+- Total reports submitted
+- Community voting stats
+- Agreement percentage
+- Flagged/disputed count
 
 ## 🚀 Future Ideas
 
-- [ ] Photo uploads
-- [ ] User authentication
-- [ ] Export to CSV/JSON
-- [ ] Mobile app (same Python code!)
-- [ ] Email notifications
+- [ ] Photo uploads of parking signs
+- [ ] User authentication & profiles
+- [ ] Mobile-optimized interface
+- [ ] Multiple cities support
+- [ ] Email notifications for areas
+- [ ] Export reports to CSV/JSON
+- [ ] Time-based parking rules
+- [ ] Search by address
 - [ ] Dark mode
-- [ ] Filter by issue type
-- [ ] Search by location
 
 ## ⚠️ Disclaimer
 
-**EXPERIMENTAL SERVICE - NO LIABILITY**
+**EXPERIMENTAL SERVICE - USE AT YOUR OWN RISK**
 
-This is an experimental crowdsourced application. The information provided is submitted by community members and may be inaccurate, outdated, or incomplete.
+SignSpot is an experimental crowdsourced application. Reports are submitted by community members and may be inaccurate, outdated, or incomplete.
 
 **Important:**
-- We make **NO WARRANTIES** about the accuracy, reliability, or completeness of any reports
-- We assume **NO LIABILITY** for parking tickets, fines, or any other consequences
-- **Always verify parking signs yourself** before parking
-- Use this service at your own risk
-- Report accuracy depends entirely on community contributions
+- We make **NO WARRANTIES** about accuracy or reliability
+- We assume **NO LIABILITY** for parking tickets or consequences
+- **Always verify parking rules yourself** before parking
+- This is a community tool - accuracy depends on users
+- Report information responsibly
 
-## 📄 License & Copyright
+## 📄 License
 
-© 2026 SignSpot. All rights reserved.
+MIT License - © 2026 SignSpot
 
-MIT License - Free to use and modify for non-commercial purposes.
+Free to use, modify, and distribute for non-commercial purposes.
 
 ## 🙏 Credits
 
-- Maps: [OpenStreetMap](https://www.openstreetmap.org/)
-- Framework: [NiceGUI](https://nicegui.io/)
-- Icons: [Leaflet Color Markers](https://github.com/pointhi/leaflet-color-markers)
+- Maps: [OpenStreetMap](https://www.openstreetmap.org/) contributors
+- Framework: [Streamlit](https://streamlit.io/)
+- Map visualization: [Folium](https://folium.readthedocs.io/)
 
 ---
 
-**SignSpot: Spot the signs before they cost you! 🅿️✅**
+**SignSpot: Find free parking, avoid tickets! 🅿️✅**

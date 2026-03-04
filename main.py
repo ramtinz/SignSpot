@@ -206,10 +206,7 @@ init_db()
 
 # Color mapping for markers
 ISSUE_COLORS = {
-    'Hidden': 'red',
-    'Unclear': 'orange',
-    'Missing': 'purple',
-    'Damaged': 'gray',
+    'Paid Parking': 'red',
     'Free Parking': 'green'
 }
 
@@ -243,7 +240,7 @@ st.sidebar.markdown("### Navigation")
 page = st.sidebar.radio("Select View", ["🗺️ Map", "➕ Report", "📊 Reports"], label_visibility="collapsed")
 
 if page == "🗺️ Map":
-    st.subheader("📍 Parking Issues Map - Copenhagen")
+    st.subheader("📍 Parking Areas Map - Copenhagen")
     
     # Get all reports
     reports = get_all_reports()
@@ -315,15 +312,14 @@ if page == "🗺️ Map":
     with col2:
         if st.button("🔄 Use My Location", key="geolocate", use_container_width=True):
             st.info("📱 Enable location access in your browser to use this feature")
-    
     st.markdown("**Quick presets:**")
     preset_cols = st.columns(3)
     presets = {
-        "Behind tree 🌳": "Hidden behind trees/bushes",
-        "Faded ⚠️": "Sign is faded/hard to read",
-        "No sign 🚫": "No parking sign here",
-        "Broken 💔": "Sign is damaged/broken",
-        "FREE! 💚": "Free parking available here!",
+        "Hidden sign 🌳": "Parking sign hidden behind trees/bushes",
+        "Faded sign ⚠️": "Sign is faded/hard to read",
+        "No sign 🚫": "Should have a parking sign here",
+        "Broken sign 💔": "Sign is damaged/broken",
+        "FREE parking! 💚": "Free parking available here",
         "Verified ✓": "Confirmed by community"
     }
     
@@ -337,9 +333,9 @@ if page == "🗺️ Map":
     
     with st.form("quick_report_form", border=True):
         issue_type = st.selectbox(
-            "What's the issue?",
-            ["Hidden", "Unclear", "Missing", "Damaged", "Free Parking"],
-            index=["Hidden", "Unclear", "Missing", "Damaged", "Free Parking"].index(st.session_state.report_type)
+            "What's the area?",
+            ["Paid Parking", "Free Parking"],
+            index=0
         )
         
         description = st.text_area(
@@ -374,10 +370,10 @@ if page == "🗺️ Map":
             """, unsafe_allow_html=True)
         
         with col2:
-            hidden = len([r for r in reports if r[3] == 'Hidden'])
+            hidden = len([r for r in reports if r[3] == 'Paid Parking'])
             st.markdown(f"""
             <div class="metric-card">
-                <h3>Hidden Signs</h3>
+                <h3>Paid Areas</h3>
                 <div class="value">{hidden}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -412,7 +408,7 @@ if page == "🗺️ Map":
         st.info("📍 No reports yet. Click on the map or use the form below to report!", icon="ℹ️")
 
 elif page == "➕ Report":
-    st.subheader("📝 Report a Parking Issue")
+    st.subheader("📝 Report a Parking Area")
     st.info("💡 **Tip:** For easier reporting, use the Map view to click a location and submit directly!", icon="💡")
     
     with st.form("detailed_report_form", border=True):
@@ -426,14 +422,14 @@ elif page == "➕ Report":
             longitude = st.number_input("Longitude", value=st.session_state.report_lng, format="%.6f")
         
         issue_type = st.selectbox(
-            "Issue Type",
-            ["Hidden", "Unclear", "Missing", "Damaged", "Free Parking"],
-            help="Select the type of parking sign issue or free parking spot"
+            "Parking Type",
+            ["Paid Parking", "Free Parking"],
+            help="Select whether this is a paid or free parking area"
         )
         
         description = st.text_area(
             "Description",
-            placeholder="Describe the issue or free parking details...",
+            placeholder="Add any details about this parking area...",
             height=100
         )
         
@@ -446,7 +442,7 @@ elif page == "➕ Report":
             st.session_state.report_in_progress = False
 
 elif page == "📊 Reports":
-    st.subheader("All Parking Sign Reports")
+    st.subheader("All Parking Areas")
     
     reports = get_all_reports()
     
