@@ -441,7 +441,7 @@ if page == "🗺️ Map":
                 except (ValueError, TypeError):
                     st.error("❌ Error processing location data")
     st.markdown("**Quick presets:**")
-    preset_cols = st.columns(3)
+    preset_cols = st.columns(5)
     presets = {
         "Hidden sign 🌳": "Parking sign hidden behind trees/bushes",
         "Faded sign ⚠️": "Sign is faded/hard to read",
@@ -452,8 +452,7 @@ if page == "🗺️ Map":
     
     selected_preset = None
     for idx, (preset_label, preset_text) in enumerate(presets.items()):
-        col_idx = idx % 3
-        if preset_cols[col_idx].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
+        if preset_cols[idx].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
             selected_preset = preset_text
             st.session_state.report_desc = preset_text
             st.rerun()
