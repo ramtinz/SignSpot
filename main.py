@@ -225,13 +225,22 @@ if 'report_type' not in st.session_state:
 if 'report_desc' not in st.session_state:
     st.session_state.report_desc = ""
 
-# Header
-st.markdown("""
-<div class="main-header">
-    <h1>🅿️ SignSpot</h1>
-    <p>Spot problematic parking signs before you get ticketed</p>
-</div>
-""", unsafe_allow_html=True)
+# Header with logo
+logo_col, title_col = st.columns([1, 3])
+
+with logo_col:
+    try:
+        st.image('assets/signspotlogo_v1.png', width=100, use_column_width=False)
+    except:
+        st.markdown("🅿️")
+
+with title_col:
+    st.markdown("""
+    <div style="padding-top: 20px;">
+        <h1 style="margin: 0; color: #1f77b4;">SignSpot</h1>
+        <p style="margin: 5px 0 0 0; color: #666; font-size: 0.95rem;"><i>Spot we trust</i> — Parking sign reporting made easy</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Disclaimer
 st.warning("⚠️ **Experimental App - No Liability**: This is an experimental crowdsourced app. We make no guarantees about the accuracy of reports and assume no liability for any parking tickets or issues. Always verify parking signs yourself.")

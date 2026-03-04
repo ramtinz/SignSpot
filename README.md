@@ -1,5 +1,7 @@
 # 🅿️ SignSpot
 
+![SignSpot Logo](assets/signspotlogo_v1.png)
+
 > **Community-driven app to find free parking and report problematic paid parking in Copenhagen**
 
 🚀 **[Launch App →](https://signspot.streamlit.app/)**
