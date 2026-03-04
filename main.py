@@ -316,6 +316,25 @@ if page == "🗺️ Map":
         if st.button("🔄 Use My Location", key="geolocate", use_container_width=True):
             st.info("📱 Enable location access in your browser to use this feature")
     
+    st.markdown("**Quick presets:**")
+    preset_cols = st.columns(3)
+    presets = {
+        "Behind tree 🌳": "Hidden behind trees/bushes",
+        "Faded ⚠️": "Sign is faded/hard to read",
+        "No sign 🚫": "No parking sign here",
+        "Broken 💔": "Sign is damaged/broken",
+        "FREE! 💚": "Free parking available here!",
+        "Verified ✓": "Confirmed by community"
+    }
+    
+    selected_preset = None
+    for idx, (preset_label, preset_text) in enumerate(presets.items()):
+        col_idx = idx % 3
+        if preset_cols[col_idx].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
+            selected_preset = preset_text
+            st.session_state.report_desc = preset_text
+            st.rerun()
+    
     with st.form("quick_report_form", border=True):
         issue_type = st.selectbox(
             "What's the issue?",
@@ -323,33 +342,12 @@ if page == "🗺️ Map":
             index=["Hidden", "Unclear", "Missing", "Damaged", "Free Parking"].index(st.session_state.report_type)
         )
         
-        # Quick description suggestions
-        col1, col2 = st.columns(2)
-        with col1:
-            description = st.text_area(
-                "Details (optional)",
-                placeholder="Add details or just click a preset...",
-                value=st.session_state.report_desc,
-                height=80
-            )
-        
-        with col2:
-            st.markdown("**Quick presets:**")
-            preset_cols = st.columns(2)
-            presets = {
-                "Behind tree 🌳": "Hidden behind trees/bushes",
-                "Faded ⚠️": "Sign is faded/hard to read",
-                "No sign 🚫": "No parking sign here",
-                "Broken 💔": "Sign is damaged/broken",
-                "FREE! 💚": "Free parking available here!",
-                "Verified ✓": "Confirmed by community"
-            }
-            
-            for idx, (preset_label, preset_text) in enumerate(presets.items()):
-                col_idx = idx % 2
-                if preset_cols[col_idx].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
-                    description = preset_text
-                    st.rerun()
+        description = st.text_area(
+            "Details (optional)",
+            placeholder="Add details or just click a preset above...",
+            value=st.session_state.report_desc,
+            height=80
+        )
         
         submitted = st.form_submit_button("🚀 Submit Report", use_container_width=True, type="primary")
         
