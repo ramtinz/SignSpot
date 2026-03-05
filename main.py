@@ -313,7 +313,7 @@ if 'report_lng' not in st.session_state:
 if 'report_type' not in st.session_state:
     st.session_state.report_type = "Hidden"
 if 'report_desc' not in st.session_state:
-    st.session_state.report_desc = ""
+    st.session_state.report_desc = "Parking sign hidden behind trees/bushes"
 
 # Header with logo (centered)
 left_spacer, center_header, right_spacer = st.columns([1, 2, 1])
@@ -322,7 +322,7 @@ with center_header:
     try:
         logo_left, logo_center, logo_right = st.columns([1, 1, 1])
         with logo_center:
-            st.image('assets/signspotlogo_v1.png', width=100, use_column_width=False)
+            st.image('assets/signspotlogo_v1.png', width=100)
     except:
         st.markdown("<div style='text-align: center; font-size: 2rem;'>🅿️</div>", unsafe_allow_html=True)
 
@@ -497,13 +497,17 @@ if page == "🗺️ Map - Home":
             index=0,
             help="Paid Parking = Hidden, faded, damaged, or unclear paid parking signs. Free Parking = Free spots."
         )
-        
-        description = st.text_area(
-            "Details (optional)",
-            placeholder="Add details or just click a preset above...",
-            value=st.session_state.report_desc,
-            height=80
+
+        preset_values = list(presets.values())
+        default_index = preset_values.index(st.session_state.report_desc) if st.session_state.report_desc in preset_values else 0
+        description = st.selectbox(
+            "Preset reason",
+            preset_values,
+            index=default_index,
+            help="Only preset reasons are allowed to keep reports clean and consistent."
         )
+
+        st.caption("By submitting, you confirm your report is lawful, non-abusive, and does not include personal data.")
         
         submitted = st.form_submit_button("🚀 Submit Report", use_container_width=True, type="primary")
         
@@ -512,7 +516,7 @@ if page == "🗺️ Map - Home":
             st.success("✅ Report submitted! Thank you for helping the community.", icon="✅")
             st.balloons()
             st.session_state.report_in_progress = False
-            st.session_state.report_desc = ""
+            st.session_state.report_desc = "Parking sign hidden behind trees/bushes"
             st.rerun()
     
     # Show summary stats
