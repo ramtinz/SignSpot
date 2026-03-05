@@ -306,15 +306,17 @@ st.sidebar.markdown("### Navigation")
 page = st.sidebar.radio("Select View", ["🗺️ Map", "➕ Report", "📊 Reports"], label_visibility="collapsed")
 
 if page == "🗺️ Map":
-    st.subheader("📍 Parking Areas Map")
+    st.markdown("<h2 style='text-align: center;'>📍 Parking Areas Map</h2>", unsafe_allow_html=True)
     
-    # City selector in sidebar
-    selected_city = st.sidebar.selectbox(
-        "Select City",
-        options=list(CITIES.keys()),
-        index=0,
-        key="city_selector"
-    )
+    # City selector - centered above map
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        selected_city = st.selectbox(
+            "Select City to Center Map",
+            options=list(CITIES.keys()),
+            index=0,
+            key="city_selector"
+        )
     
     # Get coordinates for selected city
     city_lat, city_lng = CITIES[selected_city]
@@ -366,8 +368,10 @@ if page == "🗺️ Map":
             popup="📝 Report in progress"
         ).add_to(m)
     
-    # Display map with click capture
-    map_data = st_folium(m, width=1000, height=600)
+    # Display map with click capture - centered
+    col1, col2, col3 = st.columns([0.5, 3, 0.5])
+    with col2:
+        map_data = st_folium(m, width=1000, height=600)
     
     # Handle map clicks
     if map_data and map_data['last_clicked']:
