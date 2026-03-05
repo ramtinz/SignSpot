@@ -284,30 +284,33 @@ if 'report_type' not in st.session_state:
 if 'report_desc' not in st.session_state:
     st.session_state.report_desc = ""
 
-# Header with logo
-logo_col, title_col = st.columns([1, 3])
+# Header with logo (centered)
+left_spacer, center_header, right_spacer = st.columns([1, 2, 1])
 
-with logo_col:
+with center_header:
     try:
-        st.image('assets/signspotlogo_v1.png', width=100, use_column_width=False)
+        logo_left, logo_center, logo_right = st.columns([1, 1, 1])
+        with logo_center:
+            st.image('assets/signspotlogo_v1.png', width=100, use_column_width=False)
     except:
-        st.markdown("🅿️")
+        st.markdown("<div style='text-align: center; font-size: 2rem;'>🅿️</div>", unsafe_allow_html=True)
 
-with title_col:
     st.markdown("""
-    <div style="padding-top: 20px;">
+    <div style="text-align: center; padding-top: 10px;">
         <h1 style="margin: 0; color: #1f77b4;">SignSpot</h1>
         <p style="margin: 5px 0 0 0; color: #666; font-size: 0.95rem;"><i>Spot we trust</i> — Parking sign reporting made easy</p>
     </div>
     """, unsafe_allow_html=True)
 
-# Top navigation
-page = st.radio(
-    "Navigation",
-    ["🗺️ Map - Home", "📊 Reports"],
-    horizontal=True,
-    label_visibility="collapsed"
-)
+# Top navigation (centered)
+nav_left, nav_center, nav_right = st.columns([1, 2, 1])
+with nav_center:
+    page = st.radio(
+        "Navigation",
+        ["🗺️ Map - Home", "📊 Reports"],
+        horizontal=True,
+        label_visibility="collapsed"
+    )
 
 if page == "🗺️ Map - Home":
     st.markdown("<h2 style='text-align: center;'>📍 Parking Areas Map</h2>", unsafe_allow_html=True)
