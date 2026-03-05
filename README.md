@@ -10,7 +10,16 @@
 
 ## What is SignSpot?
 
-A crowdsourced map where drivers report and vote on parking areas worldwide. Find free spots, warn others about tricky paid parking (hidden signs, damaged signs, unclear markings), and help everyone navigate complex parking landscapes.
+A **unique community-driven app** that fills the gaps left by traditional parking apps. While most parking apps only show where you can park with payment, SignSpot helps you:
+
+- 🚩 **Flag problematic parking signs** - Report hidden, faded, broken, or confusing signs that other apps can't track
+- 🆓 **Share free parking spots** - Find and report free parking areas that commercial apps often miss
+- 📍 **Report missing information** - Flag areas where parking availability is unclear — a capability traditional parking apps don't provide
+- 🗳️ **Community verification** - Vote on reports to build an accurate, real-time parking map
+
+**The Problem**: Traditional parking apps show paid zones but often have incomplete data and don't allow users to flag areas with missing or unclear parking information.
+
+**The Solution**: SignSpot is a crowdsourced map where drivers report and vote on parking areas worldwide. Find free spots, warn others about tricky paid parking, and help everyone navigate complex parking landscapes.
 
 ## 🎯 Key Features
 

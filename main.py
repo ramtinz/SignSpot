@@ -233,6 +233,46 @@ def get_page_views():
     conn.close()
     return result[0] if result else 0
 
+@st.dialog("ℹ️ About SignSpot")
+def show_help():
+    st.markdown("""
+    ### What is SignSpot?
+    SignSpot is a **unique community-driven platform** for reporting parking sign issues and free parking spots.
+    
+    Unlike traditional parking apps that only show where you can park with payment, SignSpot fills the gaps by:
+    - Reporting **problematic paid parking signs** that are hidden, faded, broken, or confusing
+    - Sharing **free parking areas** that other apps often miss or don't track
+    - **Flagging areas with missing or incomplete parking information** — a capability most parking apps don't provide
+    - Providing **real-time community updates** about parking availability
+    
+    ### The Problem 🚫
+    Most parking apps show paid parking zones but:
+    - Have **missing or incomplete information** about many areas
+    - **Don't allow users to flag areas** where parking availability is unclear or not shown
+    - Often miss **free parking spots** entirely
+    - Don't track issues like:
+        - **Hidden signs**: Signs blocked by trees, bushes, or other obstacles
+        - **Faded signs**: Old signs that are hard to read
+        - **Missing signs**: Areas that should have parking signs but don't
+        - **Broken signs**: Damaged or vandalized parking signs
+        - **Confusing signs**: Unclear or contradictory parking rules
+    
+    ### The Solution ✅
+    - **Report issues**: Click on the map to mark problematic parking signs
+    - **Share free spots**: Help others find free parking areas
+    - **Flag missing info**: Report areas where parking availability is unclear
+    - **Community voting**: Upvote or downvote reports for accuracy
+    - **Real-time map**: See all reports from the community
+    
+    ### How to Use 📱
+    1. Click anywhere on the map to select a location
+    2. Choose the area type (Paid/Free)
+    3. Pick a preset reason
+    4. Submit your report
+    
+    Together, we make parking easier for everyone! 🅿️
+    """)
+
 # Initialize database
 init_db()
 
@@ -334,6 +374,12 @@ with center_header:
         <p style="margin: 5px 0 0 0; color: #666; font-size: 0.95rem;"><i>Spot we trust</i> — Parking sign reporting made easy</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Help button
+    help_col1, help_col2, help_col3 = st.columns([1, 1, 1])
+    with help_col2:
+        if st.button("ℹ️ What is SignSpot?", use_container_width=True, type="secondary"):
+            show_help()
 
     # Navigation menu - centered within the column
     nav_col1, nav_col2, nav_col3 = st.columns([1, 1, 1])
