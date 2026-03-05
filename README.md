@@ -2,13 +2,13 @@
 
 ![SignSpot Logo](assets/signspotlogo_v1.png)
 
-> **Community-driven app to find free parking and report problematic paid parking in Copenhagen**
+> **Community-driven app to find free parking and report problematic paid parking worldwide**
 
 🚀 **[Launch App →](https://signspot.streamlit.app/)**
 
 ## What is SignSpot?
 
-A crowdsourced map where drivers report and vote on parking areas. Find free spots, warn others about tricky paid parking (hidden signs, damaged signs, unclear markings), and help everyone navigate Copenhagen's complex parking landscape.
+A crowdsourced map where drivers report and vote on parking areas worldwide. Find free spots, warn others about tricky paid parking (hidden signs, damaged signs, unclear markings), and help everyone navigate complex parking landscapes.
 
 ## 🎯 Key Features
 
@@ -68,6 +68,8 @@ MIT License © 2026 SignSpot
 ## ⚠️ Disclaimer
 
 **Use at your own risk.** SignSpot is a crowdsourced app - data accuracy depends on community contributions. Always verify parking rules yourself before parking.
+
+**Legal Responsibility:** Users are solely responsible for ensuring that their use of SignSpot complies with applicable laws and regulations in their country and local jurisdiction. The use of this app is intended only for legal purposes. The developer assumes no responsibility for any legal consequences resulting from users' use of the app in violation of local, regional, or national laws.
 
 ---
 

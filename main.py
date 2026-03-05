@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="SignSpot - Parking Sign Reporter",
     page_icon="🅿️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Custom CSS for modern styling
@@ -211,9 +211,68 @@ ISSUE_COLORS = {
     'Free Parking': 'green'
 }
 
-# Copenhagen coordinates
+# Copenhagen coordinates (default)
 COPENHAGEN_LAT = 55.6761
 COPENHAGEN_LNG = 12.5683
+
+# Major world cities
+CITIES = {
+    "Copenhagen, Denmark": (55.6761, 12.5683),
+    "New York, USA": (40.7128, -74.0060),
+    "London, UK": (51.5074, -0.1278),
+    "Paris, France": (48.8566, 2.3522),
+    "Berlin, Germany": (52.5200, 13.4050),
+    "Amsterdam, Netherlands": (52.3676, 4.9041),
+    "Barcelona, Spain": (41.3851, 2.1734),
+    "Rome, Italy": (41.9028, 12.4964),
+    "Tokyo, Japan": (35.6762, 139.6503),
+    "Sydney, Australia": (-33.8688, 151.2093),
+    "Singapore": (1.3521, 103.8198),
+    "Dubai, UAE": (25.2048, 55.2708),
+    "Toronto, Canada": (43.6532, -79.3832),
+    "Los Angeles, USA": (34.0522, -118.2437),
+    "San Francisco, USA": (37.7749, -122.4194),
+    "Miami, USA": (25.7617, -80.1918),
+    "Istanbul, Turkey": (41.0082, 28.9784),
+    "Bangkok, Thailand": (13.7563, 100.5018),
+    "Mexico City, Mexico": (19.4326, -99.1332),
+    "São Paulo, Brazil": (-23.5505, -46.6333),
+    "Tehran, Iran": (35.6892, 51.3890),
+    "Moscow, Russia": (55.7558, 37.6173),
+    "Beijing, China": (39.9042, 116.4074),
+    "Shanghai, China": (31.2304, 121.4737),
+    "Hong Kong": (22.3193, 114.1694),
+    "Mumbai, India": (19.0760, 72.8777),
+    "Delhi, India": (28.7041, 77.1025),
+    "Seoul, South Korea": (37.5665, 126.9780),
+    "Singapore": (1.3521, 103.8198),
+    "Ho Chi Minh City, Vietnam": (10.7769, 106.7009),
+    "Kuala Lumpur, Malaysia": (3.1390, 101.6869),
+    "Jakarta, Indonesia": (-6.2088, 106.8456),
+    "Manila, Philippines": (14.5995, 120.9842),
+    "Athens, Greece": (37.9838, 23.7275),
+    "Madrid, Spain": (40.4168, -3.7038),
+    "Milan, Italy": (45.4642, 9.1900),
+    "Vienna, Austria": (48.2082, 16.3738),
+    "Prague, Czech Republic": (50.0755, 14.4378),
+    "Budapest, Hungary": (47.4979, 19.0402),
+    "Warsaw, Poland": (52.2297, 21.0122),
+    "Lisbon, Portugal": (38.7223, -9.1393),
+    "Dublin, Ireland": (53.3498, -6.2603),
+    "Montreal, Canada": (45.5017, -73.5673),
+    "Vancouver, Canada": (49.2827, -123.1207),
+    "Mexico City, Mexico": (19.4326, -99.1332),
+    "Buenos Aires, Argentina": (-34.6037, -58.3816),
+    "Rio de Janeiro, Brazil": (-22.9068, -43.1729),
+    "Santiago, Chile": (-33.8688, -51.2093),
+    "Bogotá, Colombia": (4.7110, -74.0721),
+    "Cairo, Egypt": (30.0444, 31.2357),
+    "Lagos, Nigeria": (6.5244, 3.3792),
+    "Cape Town, South Africa": (-33.9249, 18.4241),
+    "Johannesburg, South Africa": (-26.2023, 28.0436),
+    "Dubai, UAE": (25.2048, 55.2708),
+    "Abu Dhabi, UAE": (24.4539, 54.3773),
+}
 
 # Initialize session state for map-based reporting
 if 'report_lat' not in st.session_state:
@@ -242,22 +301,30 @@ with title_col:
     </div>
     """, unsafe_allow_html=True)
 
-# Disclaimer
-st.warning("⚠️ **Experimental App - No Liability**: This is an experimental crowdsourced app. We make no guarantees about the accuracy of reports and assume no liability for any parking tickets or issues. Always verify parking signs yourself.")
-
 # Sidebar navigation
 st.sidebar.markdown("### Navigation")
 page = st.sidebar.radio("Select View", ["🗺️ Map", "➕ Report", "📊 Reports"], label_visibility="collapsed")
 
 if page == "🗺️ Map":
-    st.subheader("📍 Parking Areas Map - Copenhagen")
+    st.subheader("📍 Parking Areas Map")
+    
+    # City selector in sidebar
+    selected_city = st.sidebar.selectbox(
+        "Select City",
+        options=list(CITIES.keys()),
+        index=0,
+        key="city_selector"
+    )
+    
+    # Get coordinates for selected city
+    city_lat, city_lng = CITIES[selected_city]
     
     # Get all reports
     reports = get_all_reports()
     
-    # Create map centered on Copenhagen
+    # Create map centered on selected city
     m = folium.Map(
-        location=[COPENHAGEN_LAT, COPENHAGEN_LNG],
+        location=[city_lat, city_lng],
         zoom_start=13,
         tiles="OpenStreetMap"
     )
@@ -300,7 +367,7 @@ if page == "🗺️ Map":
         ).add_to(m)
     
     # Display map with click capture
-    map_data = st_folium(m, width=1400, height=600)
+    map_data = st_folium(m, width=1000, height=600)
     
     # Handle map clicks
     if map_data and map_data['last_clicked']:
@@ -357,77 +424,7 @@ if page == "🗺️ Map":
     st.divider()
     st.markdown("### 📝 Quick Report")
     
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown(f"**Selected Location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
-    
-    with col2:
-        if st.button("🔄 Use My Location", key="geolocate", use_container_width=True):
-            # Create a simple HTML component for geolocation
-            geolocation_html = """
-            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
-                <p style="margin: 0; font-weight: bold;">📍 Click "Get Location" below:</p>
-                <button onclick="getLocation()" style="background-color: #ff4b4b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 5px;">Get My Location</button>
-                <p id="location-status" style="margin: 5px 0; font-size: 14px; color: #666;">Click the button to get your current location</p>
-            </div>
-            
-            <script>
-            function getLocation() {
-                const statusEl = document.getElementById('location-status');
-                statusEl.textContent = 'Requesting location access...';
-                statusEl.style.color = '#ffa500';
-                
-                if (!navigator.geolocation) {
-                    statusEl.textContent = 'Geolocation not supported by this browser';
-                    statusEl.style.color = '#ff4b4b';
-                    return;
-                }
-                
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        const accuracy = Math.round(position.coords.accuracy);
-                        
-                        // Store in sessionStorage for Streamlit to access
-                        sessionStorage.setItem('user_lat', lat.toString());
-                        sessionStorage.setItem('user_lng', lng.toString());
-                        sessionStorage.setItem('user_accuracy', accuracy.toString());
-                        
-                        statusEl.textContent = `✅ Location found: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${accuracy}m)`;
-                        statusEl.style.color = '#28a745';
-                        
-                        // Reload the page to update Streamlit with new location
-                        setTimeout(() => window.location.reload(), 1500);
-                    },
-                    function(error) {
-                        let errorMsg = 'Location access failed';
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                errorMsg = 'Location access denied. Please enable location permissions.';
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                errorMsg = 'Location unavailable. Check GPS/network.';
-                                break;
-                            case error.TIMEOUT:
-                                errorMsg = 'Location request timed out.';
-                                break;
-                        }
-                        statusEl.textContent = '❌ ' + errorMsg;
-                        statusEl.style.color = '#ff4b4b';
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 15000,
-                        maximumAge: 300000
-                    }
-                );
-            }
-            </script>
-            """
-            
-            components.html(geolocation_html, height=120)
+    st.markdown(f"**Selected Location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
             
             # Check if location was stored in sessionStorage
             if 'user_lat' in st.session_state and 'user_lng' in st.session_state:
@@ -768,6 +765,7 @@ elif page == "📊 Reports":
 
 # Footer
 st.divider()
+st.warning("⚠️ **Experimental App - No Liability**: This is an experimental crowdsourced app. We make no guarantees about the accuracy of reports and assume no liability for any parking tickets or issues. Always verify parking signs yourself.")
 st.markdown(
     "<p style='text-align: center; color: #666; font-size: 0.85rem;'>© 2026 SignSpot. Experimental service - no warranty or liability.</p>",
     unsafe_allow_html=True
