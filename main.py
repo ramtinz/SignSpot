@@ -6,7 +6,8 @@ from streamlit_folium import st_folium
 import pandas as pd
 import streamlit.components.v1 as components
 from PIL import Image
-import pytesseract
+import requests
+import base64
 import io
 
 # Page config
@@ -237,53 +238,71 @@ def get_page_views():
     return result[0] if result else 0
 
 def extract_text_from_image(image):
-    """Extract text from an image using OCR"""
+    """Extract and analyze parking sign using LLaVA vision model via Ollama"""
     try:
-        # Convert PIL Image to bytes for pytesseract
-        text = pytesseract.image_to_string(image)
-        return text.strip() if text else ""
+        # Convert PIL Image to bytes
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='PNG')
+        img_byte_arr.seek(0)
+        img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode()
+        
+        # Call Ollama API with LLaVA
+        response = requests.post(
+            'http://localhost:11434/api/generate',
+            json={
+                'model': 'llava',
+                'prompt': 'What does this parking sign say? Extract all text visible on the sign.',
+                'images': [img_base64],
+                'stream': False
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('response', 'Could not analyze image').strip()
+        else:
+            return f"Error: {response.status_code} - Make sure Ollama is running (ollama serve)"
+    except requests.exceptions.ConnectionError:
+        return "⚠️ Ollama not running. Start it with: ollama serve"
     except Exception as e:
-        return f"Error reading sign: {str(e)}"
+        return f"Error analyzing image: {str(e)}"
 
-def explain_sign(extracted_text):
-    """Provide simple explanation of parking sign text"""
-    if not extracted_text or len(extracted_text) < 3:
-        return "Could not extract readable text from the image. Please ensure the sign is clear and well-lit."
+def explain_sign(sign_text):
+    """Use LLaVA to provide intelligent parking sign explanation"""
+    if not sign_text or "Error" in sign_text or "⚠️" in sign_text:
+        return sign_text
     
-    # Convert to lowercase for analysis
-    text_lower = extracted_text.lower()
-    
-    # Simple keyword-based explanations
-    explanations = []
-    
-    if any(word in text_lower for word in ["no parking", "no stopping", "no waiting"]):
-        explanations.append("❌ This sign prohibits parking in this area - you cannot park here.")
-    
-    if any(word in text_lower for word in ["paid parking", "fee", "pay", "meter", "charge", "paid"]):
-        explanations.append("💰 This is a paid parking area - you must pay to park here.")
-    
-    if any(word in text_lower for word in ["resident", "permit", "authorization"]):
-        explanations.append("🔐 Permit required - only authorized vehicles can park here (residents only, or with special permit).")
-    
-    if any(word in text_lower for word in ["time limit", "limited parking", "maximum"]):
-        explanations.append("⏱️ Time limit - you can only park for a specified time period.")
-    
-    if any(word in text_lower for word in ["24 hours", "24h", "always"]):
-        explanations.append("⚠️ This restriction applies 24/7 - check other signs for exceptions.")
-    
-    if any(word in text_lower for word in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "daily", "weekday", "weekend"]):
-        explanations.append("📅 This restriction applies on specific days - check the full sign for your day.")
-    
-    if any(word in text_lower for word in ["tow", "towing", "towed", "remove", "violation"]):
-        explanations.append("🚨 Warning - violation of this sign may result in towing.")
-    
-    if any(word in text_lower for word in ["free parking", "no fee", "free"]) and "no parking" not in text_lower:
-        explanations.append("✅ This indicates free parking is available here.")
-    
-    if not explanations:
-        explanations.append("📝 Sign detected but cannot determine specific parking rules. Please read carefully or ask locals for clarification.")
-    
-    return "\n\n".join(explanations)
+    try:
+        response = requests.post(
+            'http://localhost:11434/api/generate',
+            json={
+                'model': 'llava',
+                'prompt': f"""Based on this parking sign text, provide a clear, concise explanation in simple words:
+
+Sign text: "{sign_text}"
+
+Explain:
+1. What type of parking restriction this is (paid, free, prohibited, permit-only, time-limited, etc.)
+2. When it applies (24/7, specific days/hours, etc.)
+3. What drivers should do
+4. Any warnings (towing, fines, etc.)
+
+Keep it brief and actionable.""",
+                'stream': False
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('response', 'Could not analyze sign').strip()
+        else:
+            return "Could not generate explanation. Check if Ollama is running."
+    except requests.exceptions.ConnectionError:
+        return "⚠️ Ollama not running. Start it with: ollama serve"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 # Initialize database
 init_db()
@@ -374,7 +393,7 @@ with center_header:
     try:
         logo_left, logo_center, logo_right = st.columns([1, 1, 1])
         with logo_center:
-            st.image('assets/signspotlogo_v1.png', width=100, use_column_width=False)
+            st.image('assets/signspotlogo_v1.png', width=100)
     except:
         st.markdown("<div style='text-align: center; font-size: 2rem;'>🅿️</div>", unsafe_allow_html=True)
 
@@ -783,9 +802,9 @@ elif page == "📊 Reports":
 
 elif page == "🔍 Sign Reader":
     st.markdown("<h2 style='text-align: center; font-size: 1.5rem;'>🔍 Parking Sign Reader</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>Take a photo of a confusing parking sign to extract and understand what it says</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>AI-powered vision analysis of parking signs - understands context and multiple languages</p>", unsafe_allow_html=True)
     
-    st.info("📸 **Privacy First**: Photos are processed on-device and never stored on our servers. Your images are completely private.", icon="🔒")
+    st.info("🔒 **Privacy First**: Photos are analyzed on-device using LLaVA AI and never stored on servers. Your images are completely private.\n\n⚠️ **Note**: This feature requires Ollama running locally. Start it with: `ollama serve`", icon="🔒")
     
     col1, col2 = st.columns([1, 1])
     
@@ -796,29 +815,30 @@ elif page == "🔍 Sign Reader":
         if uploaded_file is not None:
             # Display the uploaded image
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded parking sign", use_container_width=True)
+            st.image(image, caption="Uploaded parking sign", width=400)
             
-            # Extract text
+            # Analyze the sign
             st.markdown("---")
-            st.subheader("🔤 Extracting Text...")
+            st.subheader("🤖 Analyzing Sign...")
             
-            with st.spinner("Reading sign..."):
+            with st.spinner("LLaVA is analyzing the sign (this may take 10-30 seconds)..."):
                 extracted_text = extract_text_from_image(image)
             
             # Display extracted text
-            st.subheader("📝 Extracted Text")
-            st.code(extracted_text, language="text")
+            st.subheader("📝 Sign Text Detected")
+            st.info(extracted_text)
     
     with col2:
         if uploaded_file is not None:
-            st.subheader("💡 What This Sign Means")
+            st.subheader("💡 AI Analysis & Explanation")
             
-            # Explain the sign
-            explanation = explain_sign(extracted_text)
+            with st.spinner("Generating explanation..."):
+                explanation = explain_sign(extracted_text)
+            
             st.markdown(explanation)
             
             st.markdown("---")
-            st.markdown("**⚠️ Disclaimer**: This is AI-assisted text extraction. Always read the original sign carefully to ensure you understand the parking rules. When in doubt, ask a local or contact parking enforcement.")
+            st.markdown("**⚠️ Disclaimer**: This is AI-assisted analysis. Always read the original sign carefully. When in doubt, verify with parking enforcement or local signs.")
 
 # Footer
 st.divider()
