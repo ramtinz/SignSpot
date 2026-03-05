@@ -322,7 +322,7 @@ with center_header:
     try:
         logo_left, logo_center, logo_right = st.columns([1, 1, 1])
         with logo_center:
-            st.image('assets/signspotlogo_v1.png', width=100)
+            st.image('assets/signspotlogo_v1.png', width=150)
     except:
         st.markdown("<div style='text-align: center; font-size: 2rem;'>🅿️</div>", unsafe_allow_html=True)
 
