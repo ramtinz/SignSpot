@@ -9,6 +9,7 @@ from PIL import Image
 import requests
 import base64
 import io
+from anthropic import Anthropic
 
 # Page config
 st.set_page_config(
@@ -237,8 +238,8 @@ def get_page_views():
     conn.close()
     return result[0] if result else 0
 
-def extract_text_from_image(image):
-    """Extract and analyze parking sign using LLaVA vision model via Ollama"""
+def extract_text_from_image(image, api_key=None):
+    """Extract and analyze parking sign using Claude API or LLaVA via Ollama"""
     try:
         # Convert PIL Image to bytes
         img_byte_arr = io.BytesIO()
@@ -246,39 +247,93 @@ def extract_text_from_image(image):
         img_byte_arr.seek(0)
         img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode()
         
-        # Call Ollama API with LLaVA
-        response = requests.post(
-            'http://localhost:11434/api/generate',
-            json={
-                'model': 'llava',
-                'prompt': 'What does this parking sign say? Extract all text visible on the sign.',
-                'images': [img_base64],
-                'stream': False
-            },
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            return result.get('response', 'Could not analyze image').strip()
+        # Use Claude API if key provided
+        if api_key:
+            client = Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=1024,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/png",
+                                    "data": img_base64,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": "What does this parking sign say? Extract all text visible on the sign exactly as written."
+                            }
+                        ],
+                    }
+                ],
+            )
+            return message.content[0].text
         else:
-            return f"Error: {response.status_code} - Make sure Ollama is running (ollama serve)"
+            # Fall back to Ollama + LLaVA
+            response = requests.post(
+                'http://localhost:11434/api/generate',
+                json={
+                    'model': 'llava',
+                    'prompt': 'What does this parking sign say? Extract all text visible on the sign.',
+                    'images': [img_base64],
+                    'stream': False
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('response', 'Could not analyze image').strip()
+            else:
+                return f"Error: {response.status_code} - Make sure Ollama is running (ollama serve)"
     except requests.exceptions.ConnectionError:
         return "⚠️ Ollama not running. Start it with: ollama serve"
     except Exception as e:
         return f"Error analyzing image: {str(e)}"
 
-def explain_sign(sign_text):
-    """Use LLaVA to provide intelligent parking sign explanation"""
+def explain_sign(sign_text, api_key=None):
+    """Use Claude API or LLaVA to provide intelligent parking sign explanation"""
     if not sign_text or "Error" in sign_text or "⚠️" in sign_text:
         return sign_text
     
     try:
-        response = requests.post(
-            'http://localhost:11434/api/generate',
-            json={
-                'model': 'llava',
-                'prompt': f"""Based on this parking sign text, provide a clear, concise explanation in simple words:
+        # Use Claude API if key provided
+        if api_key:
+            client = Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=1024,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"""Based on this parking sign text, provide a clear, concise explanation in simple words:
+
+Sign text: "{sign_text}"
+
+Explain:
+1. What type of parking restriction this is (paid, free, prohibited, permit-only, time-limited, etc.)
+2. When it applies (24/7, specific days/hours, etc.)
+3. What drivers should do
+4. Any warnings (towing, fines, etc.)
+
+Keep it brief and actionable."""
+                    }
+                ],
+            )
+            return message.content[0].text
+        else:
+            # Fall back to Ollama
+            response = requests.post(
+                'http://localhost:11434/api/generate',
+                json={
+                    'model': 'llava',
+                    'prompt': f"""Based on this parking sign text, provide a clear, concise explanation in simple words:
 
 Sign text: "{sign_text}"
 
@@ -289,16 +344,16 @@ Explain:
 4. Any warnings (towing, fines, etc.)
 
 Keep it brief and actionable.""",
-                'stream': False
-            },
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            return result.get('response', 'Could not analyze sign').strip()
-        else:
-            return "Could not generate explanation. Check if Ollama is running."
+                    'stream': False
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('response', 'Could not analyze sign').strip()
+            else:
+                return "Could not generate explanation. Check if Ollama is running."
     except requests.exceptions.ConnectionError:
         return "⚠️ Ollama not running. Start it with: ollama serve"
     except Exception as e:
@@ -804,7 +859,26 @@ elif page == "🔍 Sign Reader":
     st.markdown("<h2 style='text-align: center; font-size: 1.5rem;'>🔍 Parking Sign Reader</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>AI-powered vision analysis of parking signs - understands context and multiple languages</p>", unsafe_allow_html=True)
     
-    st.info("🔒 **Privacy First**: Photos are analyzed on-device using LLaVA AI and never stored on servers. Your images are completely private.\n\n⚠️ **Note**: This feature requires Ollama running locally. Start it with: `ollama serve`", icon="🔒")
+    st.info("🔒 **Privacy First**: Photos are analyzed on-device (or with your own Claude API key) and NEVER stored on SignSpot servers.", icon="🔒")
+    
+    # API Key input (session-only, not stored)
+    st.subheader("⚙️ Optional: Add Claude API Key")
+    st.markdown("Leave empty to use local Ollama (requires Ollama running). Provide your own Claude API key for cloud analysis.")
+    
+    api_key = st.text_input(
+        "Claude API Key (optional)",
+        type="password",
+        placeholder="sk-ant-...",
+        help="Your API key is NOT saved - only used for this session"
+    )
+    
+    # Info about the two modes
+    if api_key:
+        st.success("✅ Claude API mode enabled - using your API key", icon="✅")
+    else:
+        st.info("📦 Ollama mode - make sure Ollama is running: `ollama serve`", icon="📦")
+    
+    st.markdown("---")
     
     col1, col2 = st.columns([1, 1])
     
@@ -821,8 +895,8 @@ elif page == "🔍 Sign Reader":
             st.markdown("---")
             st.subheader("🤖 Analyzing Sign...")
             
-            with st.spinner("LLaVA is analyzing the sign (this may take 10-30 seconds)..."):
-                extracted_text = extract_text_from_image(image)
+            with st.spinner("Analyzing the sign (this may take 10-30 seconds)..."):
+                extracted_text = extract_text_from_image(image, api_key if api_key else None)
             
             # Display extracted text
             st.subheader("📝 Sign Text Detected")
@@ -833,7 +907,7 @@ elif page == "🔍 Sign Reader":
             st.subheader("💡 AI Analysis & Explanation")
             
             with st.spinner("Generating explanation..."):
-                explanation = explain_sign(extracted_text)
+                explanation = explain_sign(extracted_text, api_key if api_key else None)
             
             st.markdown(explanation)
             
