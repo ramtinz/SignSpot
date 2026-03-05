@@ -297,7 +297,7 @@ with center_header:
 
     st.markdown("""
     <div style="text-align: center; padding-top: 10px;">
-        <h1 style="margin: 0; color: #1f77b4;">SignSpot</h1>
+        <h1 style="margin: 0; color: #1f77b4; font-size: 2rem;">SignSpot</h1>
         <p style="margin: 5px 0 0 0; color: #666; font-size: 0.95rem;"><i>Spot we trust</i> — Parking sign reporting made easy</p>
     </div>
     """, unsafe_allow_html=True)
@@ -312,7 +312,7 @@ with center_header:
     )
 
 if page == "🗺️ Map - Home":
-    st.markdown("<h2 style='text-align: center;'>📍 Parking Areas Map</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; font-size: 1.5rem;'>📍 Parking Areas Map</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>Click anywhere on the map to select a location, then scroll down to submit your report</p>", unsafe_allow_html=True)
     
     # City selector - centered above map
@@ -375,10 +375,10 @@ if page == "🗺️ Map - Home":
             popup="📝 Report in progress"
         ).add_to(m)
     
-    # Display map with click capture - centered
-    col1, col2, col3 = st.columns([0.5, 3, 0.5])
+    # Display map with click capture - centered with larger side margins for mobile scrolling
+    col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
-        map_data = st_folium(m, width=1000, height=600)
+        map_data = st_folium(m, width=850, height=560)
     
     # Handle map clicks
     if map_data and map_data['last_clicked']:
@@ -433,7 +433,7 @@ if page == "🗺️ Map - Home":
     
     # Report form (always visible for convenience)
     st.divider()
-    st.markdown("### 📝 Quick Report")
+    st.markdown("<h3 style='font-size: 1.15rem;'>📝 Quick Report</h3>", unsafe_allow_html=True)
     
     st.markdown(f"**Selected Location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
     
@@ -482,52 +482,22 @@ if page == "🗺️ Map - Home":
     # Show summary stats
     if reports:
         st.divider()
-        st.markdown("### 📊 Quick Stats")
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
+        st.markdown("<h3 style='font-size: 1.15rem;'>📊 Quick Stats</h3>", unsafe_allow_html=True)
+        col1, col2, col3, col4 = st.columns(4)
+
+        total_reports = len(reports)
+        problematic_paid = len([r for r in reports if r[3] == 'Paid Parking (Problematic)'])
+        free_parking = len([r for r in reports if r[3] == 'Free Parking'])
+        total_votes = sum([r[5] + r[6] for r in reports])
+
         with col1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h3>Total Reports</h3>
-                <div class="value">{len(reports)}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
+            st.metric("Total Reports", total_reports)
         with col2:
-            hidden = len([r for r in reports if r[3] == 'Paid Parking (Problematic)'])
-            st.markdown(f"""
-            <div class="metric-card">
-                <h3>Problematic Paid</h3>
-                <div class="value">{hidden}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
+            st.metric("Problematic Paid", problematic_paid)
         with col3:
-            unclear = len([r for r in reports if r[3] == 'Unclear'])
-            st.markdown(f"""
-            <div class="metric-card">
-                <h3>Unclear Signs</h3>
-                <div class="value">{unclear}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
+            st.metric("Free Spots", free_parking)
         with col4:
-            total_upvotes = sum([r[5] for r in reports])
-            st.markdown(f"""
-            <div class="metric-card">
-                <h3>Community Votes</h3>
-                <div class="value">{total_upvotes}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col5:
-            free_parking = len([r for r in reports if r[3] == 'Free Parking'])
-            st.markdown(f"""
-            <div class="metric-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                <h3>Free Spots</h3>
-                <div class="value">{free_parking}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("Community Votes", total_votes)
     else:
         st.info("📍 No reports yet. Click on the map or use the form below to report!", icon="ℹ️")
 
