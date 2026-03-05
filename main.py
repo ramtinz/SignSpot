@@ -320,8 +320,8 @@ left_spacer, center_header, right_spacer = st.columns([1, 2, 1])
 
 with center_header:
     try:
-        # Center the logo using columns
-        _, logo_col, _ = st.columns([1, 2, 1])
+        # Center the logo using columns with wider side margins
+        _, logo_col, _ = st.columns([0.5, 1, 0.5])
         with logo_col:
             st.image('assets/signspotlogo_v1.png', width=220)
     except:
@@ -334,14 +334,15 @@ with center_header:
     </div>
     """, unsafe_allow_html=True)
 
-# Top navigation (aligned with centered subtitle)
-with center_header:
-    page = st.radio(
-        "Navigation",
-        ["🗺️ Map - Home", "📊 Reports"],
-        horizontal=True,
-        label_visibility="collapsed"
-    )
+    # Center the navigation menu
+    _, nav_col, _ = st.columns([0.5, 1, 0.5])
+    with nav_col:
+        page = st.radio(
+            "Navigation",
+            ["🗺️ Map - Home", "📊 Reports"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
 
 # Increment page views on app load (use session state to count only once per session)
 if 'view_counted' not in st.session_state:
