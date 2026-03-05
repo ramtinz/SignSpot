@@ -733,6 +733,6 @@ elif page == "📊 Reports":
 st.divider()
 st.warning("⚠️ **Experimental App - No Liability**: This is an experimental crowdsourced app. We make no guarantees about the accuracy of reports and assume no liability for any parking tickets or issues. Always verify parking signs yourself.")
 st.markdown(
-    "<p style='text-align: center; color: #666; font-size: 0.85rem;'>© 2026 SignSpot. Experimental service - no warranty or liability.</p>",
+    "<p style='text-align: center; color: #666; font-size: 0.85rem;'>© 2026 Ramtin Zargari Marandi. Experimental service - no warranty or liability.</p>",
     unsafe_allow_html=True
 )
