@@ -302,9 +302,8 @@ with center_header:
     </div>
     """, unsafe_allow_html=True)
 
-# Top navigation (centered)
-nav_left, nav_center, nav_right = st.columns([1, 2, 1])
-with nav_center:
+# Top navigation (aligned with centered subtitle)
+with center_header:
     page = st.radio(
         "Navigation",
         ["🗺️ Map - Home", "📊 Reports"],
