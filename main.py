@@ -425,27 +425,7 @@ if page == "🗺️ Map":
     st.markdown("### 📝 Quick Report")
     
     st.markdown(f"**Selected Location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
-            
-            # Check if location was stored in sessionStorage
-            if 'user_lat' in st.session_state and 'user_lng' in st.session_state:
-                try:
-                    lat = float(st.session_state.user_lat)
-                    lng = float(st.session_state.user_lng)
-                    accuracy = st.session_state.get('user_accuracy', 'unknown')
-                    
-                    st.session_state.report_lat = lat
-                    st.session_state.report_lng = lng
-                    
-                    # Clear the stored location
-                    del st.session_state.user_lat
-                    del st.session_state.user_lng
-                    if 'user_accuracy' in st.session_state:
-                        del st.session_state.user_accuracy
-                    
-                    st.success(f"✅ Location set: {lat:.6f}, {lng:.6f} (±{accuracy}m)")
-                    st.rerun()
-                except (ValueError, TypeError):
-                    st.error("❌ Error processing location data")
+    
     st.markdown("**Quick presets:**")
     preset_cols = st.columns(5)
     presets = {
