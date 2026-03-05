@@ -319,24 +319,13 @@ if 'report_desc' not in st.session_state:
 left_spacer, center_header, right_spacer = st.columns([1, 2, 1])
 
 with center_header:
+    # Logo
     try:
-        # Center the logo using HTML
-        st.markdown("""
-        <div style="text-align: center;">
-            <img src="./app/static/signspotlogo_v1.png" width="220" style="display: block; margin: 0 auto;">
-        </div>
-        """, unsafe_allow_html=True)
-    except:
-        pass
-    
-    # Fallback: try loading image normally with centering
-    try:
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.image('assets/signspotlogo_v1.png', width=220)
+        st.image('assets/signspotlogo_v1.png', width=220)
     except:
         st.markdown("<div style='text-align: center; font-size: 2rem;'>🅿️</div>", unsafe_allow_html=True)
 
+    # Title and subtitle
     st.markdown("""
     <div style="text-align: center; padding-top: 10px;">
         <h1 style="margin: 0; color: #1f77b4; font-size: 2rem;">SignSpot</h1>
@@ -344,15 +333,13 @@ with center_header:
     </div>
     """, unsafe_allow_html=True)
 
-    # Center the navigation menu using columns
-    nav_col1, nav_col2, nav_col3 = st.columns([1, 2, 1])
-    with nav_col2:
-        page = st.radio(
-            "Navigation",
-            ["🗺️ Map - Home", "📊 Reports"],
-            horizontal=True,
-            label_visibility="collapsed"
-        )
+    # Navigation menu
+    page = st.radio(
+        "Navigation",
+        ["🗺️ Map - Home", "📊 Reports"],
+        horizontal=True,
+        label_visibility="collapsed"
+    )
 
 # Increment page views on app load (use session state to count only once per session)
 if 'view_counted' not in st.session_state:
