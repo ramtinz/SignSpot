@@ -5,6 +5,9 @@ import folium
 from streamlit_folium import st_folium
 import pandas as pd
 import streamlit.components.v1 as components
+from PIL import Image
+import pytesseract
+import io
 
 # Page config
 st.set_page_config(
@@ -233,6 +236,55 @@ def get_page_views():
     conn.close()
     return result[0] if result else 0
 
+def extract_text_from_image(image):
+    """Extract text from an image using OCR"""
+    try:
+        # Convert PIL Image to bytes for pytesseract
+        text = pytesseract.image_to_string(image)
+        return text.strip() if text else ""
+    except Exception as e:
+        return f"Error reading sign: {str(e)}"
+
+def explain_sign(extracted_text):
+    """Provide simple explanation of parking sign text"""
+    if not extracted_text or len(extracted_text) < 3:
+        return "Could not extract readable text from the image. Please ensure the sign is clear and well-lit."
+    
+    # Convert to lowercase for analysis
+    text_lower = extracted_text.lower()
+    
+    # Simple keyword-based explanations
+    explanations = []
+    
+    if any(word in text_lower for word in ["no parking", "no stopping", "no waiting"]):
+        explanations.append("❌ This sign prohibits parking in this area - you cannot park here.")
+    
+    if any(word in text_lower for word in ["paid parking", "fee", "pay", "meter", "charge", "paid"]):
+        explanations.append("💰 This is a paid parking area - you must pay to park here.")
+    
+    if any(word in text_lower for word in ["resident", "permit", "authorization"]):
+        explanations.append("🔐 Permit required - only authorized vehicles can park here (residents only, or with special permit).")
+    
+    if any(word in text_lower for word in ["time limit", "limited parking", "maximum"]):
+        explanations.append("⏱️ Time limit - you can only park for a specified time period.")
+    
+    if any(word in text_lower for word in ["24 hours", "24h", "always"]):
+        explanations.append("⚠️ This restriction applies 24/7 - check other signs for exceptions.")
+    
+    if any(word in text_lower for word in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "daily", "weekday", "weekend"]):
+        explanations.append("📅 This restriction applies on specific days - check the full sign for your day.")
+    
+    if any(word in text_lower for word in ["tow", "towing", "towed", "remove", "violation"]):
+        explanations.append("🚨 Warning - violation of this sign may result in towing.")
+    
+    if any(word in text_lower for word in ["free parking", "no fee", "free"]) and "no parking" not in text_lower:
+        explanations.append("✅ This indicates free parking is available here.")
+    
+    if not explanations:
+        explanations.append("📝 Sign detected but cannot determine specific parking rules. Please read carefully or ask locals for clarification.")
+    
+    return "\n\n".join(explanations)
+
 # Initialize database
 init_db()
 
@@ -337,7 +389,7 @@ with center_header:
 with center_header:
     page = st.radio(
         "Navigation",
-        ["🗺️ Map - Home", "📊 Reports"],
+        ["🗺️ Map - Home", "📊 Reports", "🔍 Sign Reader"],
         horizontal=True,
         label_visibility="collapsed"
     )
@@ -728,6 +780,45 @@ elif page == "📊 Reports":
             st.metric("Heavily Flagged", flagged_count)
     else:
         st.info("📍 No reports yet. Be the first to report a parking sign issue!", icon="ℹ️")
+
+elif page == "🔍 Sign Reader":
+    st.markdown("<h2 style='text-align: center; font-size: 1.5rem;'>🔍 Parking Sign Reader</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>Take a photo of a confusing parking sign to extract and understand what it says</p>", unsafe_allow_html=True)
+    
+    st.info("📸 **Privacy First**: Photos are processed on-device and never stored on our servers. Your images are completely private.", icon="🔒")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("📤 Upload Sign Photo")
+        uploaded_file = st.file_uploader("Choose a parking sign image", type=["jpg", "jpeg", "png", "gif", "bmp"])
+        
+        if uploaded_file is not None:
+            # Display the uploaded image
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Uploaded parking sign", use_container_width=True)
+            
+            # Extract text
+            st.markdown("---")
+            st.subheader("🔤 Extracting Text...")
+            
+            with st.spinner("Reading sign..."):
+                extracted_text = extract_text_from_image(image)
+            
+            # Display extracted text
+            st.subheader("📝 Extracted Text")
+            st.code(extracted_text, language="text")
+    
+    with col2:
+        if uploaded_file is not None:
+            st.subheader("💡 What This Sign Means")
+            
+            # Explain the sign
+            explanation = explain_sign(extracted_text)
+            st.markdown(explanation)
+            
+            st.markdown("---")
+            st.markdown("**⚠️ Disclaimer**: This is AI-assisted text extraction. Always read the original sign carefully to ensure you understand the parking rules. When in doubt, ask a local or contact parking enforcement.")
 
 # Footer
 st.divider()
