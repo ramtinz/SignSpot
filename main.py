@@ -307,6 +307,7 @@ page = st.sidebar.radio("Select View", ["🗺️ Map", "➕ Report", "📊 Repor
 
 if page == "🗺️ Map":
     st.markdown("<h2 style='text-align: center;'>📍 Parking Areas Map</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>Click anywhere on the map to select a location, then scroll down to submit your report</p>", unsafe_allow_html=True)
     
     # City selector - centered above map
     col1, col2, col3 = st.columns([1, 2, 1])
