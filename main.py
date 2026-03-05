@@ -320,9 +320,10 @@ left_spacer, center_header, right_spacer = st.columns([1, 2, 1])
 
 with center_header:
     try:
-        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-        st.image('assets/signspotlogo_v1.png', width=220)
-        st.markdown("</div>", unsafe_allow_html=True)
+        # Center the logo using columns
+        _, logo_col, _ = st.columns([1, 2, 1])
+        with logo_col:
+            st.image('assets/signspotlogo_v1.png', width=220)
     except:
         st.markdown("<div style='text-align: center; font-size: 2rem;'>🅿️</div>", unsafe_allow_html=True)
 
