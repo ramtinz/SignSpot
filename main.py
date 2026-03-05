@@ -301,11 +301,15 @@ with title_col:
     </div>
     """, unsafe_allow_html=True)
 
-# Sidebar navigation
-st.sidebar.markdown("### Navigation")
-page = st.sidebar.radio("Select View", ["🗺️ Map", "➕ Report", "📊 Reports"], label_visibility="collapsed")
+# Top navigation
+page = st.radio(
+    "Navigation",
+    ["🗺️ Map - Home", "📊 Reports"],
+    horizontal=True,
+    label_visibility="collapsed"
+)
 
-if page == "🗺️ Map":
+if page == "🗺️ Map - Home":
     st.markdown("<h2 style='text-align: center;'>📍 Parking Areas Map</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>Click anywhere on the map to select a location, then scroll down to submit your report</p>", unsafe_allow_html=True)
     
@@ -524,40 +528,6 @@ if page == "🗺️ Map":
             """, unsafe_allow_html=True)
     else:
         st.info("📍 No reports yet. Click on the map or use the form below to report!", icon="ℹ️")
-
-elif page == "➕ Report":
-    st.subheader("📝 Report a Parking Area")
-    st.info("💡 **Tip:** For easier reporting, use the Map view to click a location and submit directly!", icon="💡")
-    
-    with st.form("detailed_report_form", border=True):
-        st.markdown("#### Manual Coordinate Entry")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            latitude = st.number_input("Latitude", value=st.session_state.report_lat, format="%.6f")
-        with col2:
-            longitude = st.number_input("Longitude", value=st.session_state.report_lng, format="%.6f")
-        
-        issue_type = st.selectbox(
-            "Parking Type",
-            ["Paid Parking (Problematic)", "Free Parking"],
-            help="Paid Parking = Hidden, faded, damaged, or unclear paid parking signs. Free Parking = Free spots."
-        )
-        
-        description = st.text_area(
-            "Description",
-            placeholder="Add any details about this parking area...",
-            height=100
-        )
-        
-        submitted = st.form_submit_button("🚀 Submit Report", use_container_width=True, type="primary")
-        
-        if submitted:
-            add_report(latitude, longitude, issue_type, description)
-            st.success("✅ Report submitted successfully! Thank you for helping the community.", icon="✅")
-            st.balloons()
-            st.session_state.report_in_progress = False
 
 elif page == "📊 Reports":
     st.subheader("All Parking Areas")
