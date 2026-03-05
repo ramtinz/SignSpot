@@ -6,6 +6,8 @@
 
 🚀 **[Launch App →](https://signspot.streamlit.app/)**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18874701.svg)](https://doi.org/10.5281/zenodo.18874701)
+
 ## What is SignSpot?
 
 A crowdsourced map where drivers report and vote on parking areas worldwide. Find free spots, warn others about tricky paid parking (hidden signs, damaged signs, unclear markings), and help everyone navigate complex parking landscapes.
@@ -63,7 +65,34 @@ streamlit run main.py
 
 ## 📄 License
 
-MIT License © 2026 SignSpot
+Non-Commercial License © 2026 Ramtin Zargari Marandi
+
+Free for non-commercial use. Commercial use requires permission. See [LICENSE](LICENSE) for details.
+
+## 🤝 Collaboration & Enquiries
+
+For collaboration, feedback, or project enquiries, contact:
+
+**ramtin.zargari AT gmail.com**
+
+## 📚 Citation & DOI
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18874701.svg)](https://doi.org/10.5281/zenodo.18874701)
+
+To cite this project:
+
+```bibtex
+@software{zargari_marandi_2026_signspot,
+  author       = {Zargari Marandi, Ramtin},
+  title        = {SignSpot},
+  year         = 2026,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.18874701},
+  url          = {https://doi.org/10.5281/zenodo.18874701}
+}
+```
+
+Citation metadata is also available in [CITATION.cff](CITATION.cff).
 
 ## ⚠️ Disclaimer
 

@@ -155,6 +155,20 @@ def init_db():
     if 'flags' not in columns:
         c.execute('ALTER TABLE reports ADD COLUMN flags INTEGER DEFAULT 0')
     
+    # Create page_views table if it doesn't exist
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS page_views (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            view_count INTEGER DEFAULT 0,
+            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Initialize page_views table with single row if empty
+    c.execute('SELECT COUNT(*) FROM page_views')
+    if c.fetchone()[0] == 0:
+        c.execute('INSERT INTO page_views (view_count) VALUES (0)')
+    
     conn.commit()
     conn.close()
 
@@ -201,6 +215,23 @@ def flag_report(report_id):
     c.execute('UPDATE reports SET flags = flags + 1 WHERE id = ?', (report_id,))
     conn.commit()
     conn.close()
+
+def increment_page_views():
+    """Increment page view counter"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('UPDATE page_views SET view_count = view_count + 1, last_updated = CURRENT_TIMESTAMP WHERE id = 1')
+    conn.commit()
+    conn.close()
+
+def get_page_views():
+    """Get total page views"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('SELECT view_count FROM page_views WHERE id = 1')
+    result = c.fetchone()
+    conn.close()
+    return result[0] if result else 0
 
 # Initialize database
 init_db()
@@ -310,6 +341,11 @@ with center_header:
         horizontal=True,
         label_visibility="collapsed"
     )
+
+# Increment page views on app load (use session state to count only once per session)
+if 'view_counted' not in st.session_state:
+    increment_page_views()
+    st.session_state.view_counted = True
 
 if page == "🗺️ Map - Home":
     st.markdown("<h2 style='text-align: center; font-size: 1.5rem;'>📍 Parking Areas Map</h2>", unsafe_allow_html=True)
@@ -483,12 +519,13 @@ if page == "🗺️ Map - Home":
     if reports:
         st.divider()
         st.markdown("<h3 style='font-size: 1.15rem;'>📊 Quick Stats</h3>", unsafe_allow_html=True)
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
 
         total_reports = len(reports)
         problematic_paid = len([r for r in reports if r[3] == 'Paid Parking (Problematic)'])
         free_parking = len([r for r in reports if r[3] == 'Free Parking'])
         total_votes = sum([r[5] + r[6] for r in reports])
+        page_views = get_page_views()
 
         with col1:
             st.metric("Total Reports", total_reports)
@@ -498,6 +535,8 @@ if page == "🗺️ Map - Home":
             st.metric("Free Spots", free_parking)
         with col4:
             st.metric("Community Votes", total_votes)
+        with col5:
+            st.metric("Page Views", page_views)
     else:
         st.info("📍 No reports yet. Click on the map or use the form below to report!", icon="ℹ️")
 

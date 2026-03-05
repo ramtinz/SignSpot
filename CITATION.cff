@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this project, please cite it using the metadata below."
+title: "SignSpot"
+abstract: "Community-driven app to find free parking and report problematic paid parking worldwide."
+type: software
+authors:
+  - family-names: "Zargari Marandi"
+    given-names: "Ramtin"
+    email: "ramtin.zargari@gmail.com"
+repository-code: "https://github.com/ramtinz/SignSpot"
+url: "https://signspot.streamlit.app/"
+license: "Non-Commercial"
+version: "1.0.0"
+date-released: "2026-03-05"
+doi: "10.5281/zenodo.18874701"
