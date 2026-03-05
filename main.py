@@ -472,24 +472,6 @@ if page == "🗺️ Map - Home":
     st.markdown("<h3 style='font-size: 1.15rem;'>📝 Quick Report</h3>", unsafe_allow_html=True)
     
     st.markdown(f"**Selected Location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
-    
-    st.markdown("**Quick presets:**")
-    preset_cols = st.columns(5)
-    presets = {
-        "Hidden sign 🌳": "Parking sign hidden behind trees/bushes",
-        "Faded sign ⚠️": "Sign is faded/hard to read",
-        "No sign 🚫": "Should have a parking sign here",
-        "Broken sign 💔": "Sign is damaged/broken",
-        "FREE parking! 💚": "Free parking available here"
-    }
-    
-    selected_preset = None
-    for idx, (preset_label, preset_text) in enumerate(presets.items()):
-        if preset_cols[idx].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
-            selected_preset = preset_text
-            st.session_state.report_desc = preset_text
-            st.rerun()
-    
     with st.form("quick_report_form", border=True):
         issue_type = st.selectbox(
             "What's the area?",
@@ -498,21 +480,41 @@ if page == "🗺️ Map - Home":
             help="Paid Parking = Hidden, faded, damaged, or unclear paid parking signs. Free Parking = Free spots."
         )
 
-        preset_values = list(presets.values())
-        default_index = preset_values.index(st.session_state.report_desc) if st.session_state.report_desc in preset_values else 0
-        description = st.selectbox(
-            "Preset reason",
-            preset_values,
-            index=default_index,
-            help="Only preset reasons are allowed to keep reports clean and consistent."
-        )
+        # Define presets based on area type
+        if issue_type == "Paid Parking (Problematic)":
+            presets = {
+                "Hidden sign 🌳": "Parking sign hidden behind trees/bushes",
+                "Faded sign ⚠️": "Sign is faded/hard to read",
+                "No sign 🚫": "Should have a parking sign here",
+                "Broken sign 💔": "Sign is damaged/broken",
+                "Confusing sign ❓": "Sign is confusing or unclear"
+            }
+        else:  # Free Parking
+            presets = {
+                "Free spot! 💚": "Free parking available here",
+                "Free street 🅿️": "Free street parking area",
+                "Free lot 🏞️": "Free parking lot",
+                "Free evening 🌙": "Free parking after hours",
+                "Free weekend 📅": "Free parking on weekends"
+            }
+        
+        st.markdown("**Choose a reason:**")
+        preset_cols = st.columns(5)
+        
+        for idx, (preset_label, preset_text) in enumerate(presets.items()):
+            if preset_cols[idx].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
+                st.session_state.report_desc = preset_text
+                st.rerun()
+        
+        # Show currently selected preset
+        st.info(f"**Selected:** {st.session_state.report_desc}")
 
         st.caption("By submitting, you confirm your report is lawful, non-abusive, and does not include personal data.")
         
         submitted = st.form_submit_button("🚀 Submit Report", use_container_width=True, type="primary")
         
         if submitted:
-            add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, description)
+            add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, st.session_state.report_desc)
             st.success("✅ Report submitted! Thank you for helping the community.", icon="✅")
             st.balloons()
             st.session_state.report_in_progress = False
