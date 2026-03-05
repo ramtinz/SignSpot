@@ -862,8 +862,8 @@ elif page == "🔍 Sign Reader":
     st.info("🔒 **Privacy First**: Photos are analyzed on-device (or with your own Claude API key) and NEVER stored on SignSpot servers.", icon="🔒")
     
     # API Key input (session-only, not stored)
-    st.subheader("⚙️ Optional: Add Claude API Key")
-    st.markdown("Leave empty to use local Ollama (requires Ollama running). Provide your own Claude API key for cloud analysis.")
+    st.subheader("⚙️ Optional: Claude API Key (recommended for mobile)")
+    st.markdown("Paste your own Claude key for mobile-friendly cloud analysis. If empty, SignSpot tries local Ollama fallback (desktop-oriented).")
     
     api_key = st.text_input(
         "Claude API Key (optional)",
@@ -876,7 +876,7 @@ elif page == "🔍 Sign Reader":
     if api_key:
         st.success("✅ Claude API mode enabled - using your API key", icon="✅")
     else:
-        st.info("📦 Ollama mode - make sure Ollama is running: `ollama serve`", icon="📦")
+        st.info("📦 No API key detected. Using local Ollama fallback (desktop): `ollama serve`", icon="📦")
     
     st.markdown("---")
     
@@ -889,7 +889,7 @@ elif page == "🔍 Sign Reader":
         if uploaded_file is not None:
             # Display the uploaded image
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded parking sign", width=400)
+            st.image(image, caption="Uploaded parking sign", width="stretch")
             
             # Analyze the sign
             st.markdown("---")
