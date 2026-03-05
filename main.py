@@ -344,22 +344,15 @@ with center_header:
     </div>
     """, unsafe_allow_html=True)
 
-    # Center the navigation menu using HTML/CSS
-    st.markdown("""
-    <style>
-    div[data-testid="column"] > div:has(> div > div[role="radiogroup"]) {
-        display: flex;
-        justify-content: center;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    page = st.radio(
-        "Navigation",
-        ["🗺️ Map - Home", "📊 Reports"],
-        horizontal=True,
-        label_visibility="collapsed"
-    )
+    # Center the navigation menu using columns
+    nav_col1, nav_col2, nav_col3 = st.columns([1, 2, 1])
+    with nav_col2:
+        page = st.radio(
+            "Navigation",
+            ["🗺️ Map - Home", "📊 Reports"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
 
 # Increment page views on app load (use session state to count only once per session)
 if 'view_counted' not in st.session_state:
