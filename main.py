@@ -332,9 +332,9 @@ if 'report_desc' not in st.session_state:
     st.session_state.report_desc = "Parking sign hidden behind trees/bushes"
 
 # Compact header and navigation
-logo, brand, help_control = st.columns([1, 6, 2])
+logo, brand, help_control = st.columns([2, 5, 2])
 with logo:
-    st.image("assets/signspotlogo_v1.png", width=72)
+    st.image("assets/signspotlogo_v1.png", width=180)
 with brand:
     st.markdown("""<div class="signspot-header"><h1>SignSpot</h1>
     <p>Find parking. Report unclear signs.</p></div>""", unsafe_allow_html=True)
