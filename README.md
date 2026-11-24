@@ -1,6 +1,6 @@
 # 🅿️ SignSpot
 
-![SignSpot Logo](assets/signspotlogo_v1.png)
+![SignSpot Logo](assets/signspotlogo-transparent.png)
 
 > **Community-driven app to find free parking and report problematic paid parking worldwide**
 
