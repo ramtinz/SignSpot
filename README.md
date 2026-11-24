@@ -44,6 +44,8 @@ A **unique community-driven app** that fills the gaps left by traditional parkin
 - Free parking zones
 - Community-verified free spots
 
+Area reports appear as shaded boundaries on the map. Use the drawing toolbar to edit or delete a boundary before confirming it. Include only parking spaces covered by the same reported conditions.
+
 ## Parking restrictions
 
 When adding a report, open **Parking restrictions (optional)** to record vehicle types, reserved access, charging requirements, hours, payment, size limits, and an official information URL. Electric **AND** authorized shared cars and electric **OR** authorized shared cars have separate options. Motorhome parking and overnight/camping permission are recorded separately. Use **Unknown** for conditions you cannot confirm.
@@ -65,7 +67,7 @@ streamlit run main.py
 
 ## 📖 How to Use
 
-1. **Choose a location** — Select your city and tap the exact spot on the map.
+1. **Choose a location** — Select your city and choose **Spot** or **Area**. Tap a spot, or draw a polygon and select **Use this area**.
 2. **Describe the spot** — Choose free parking or a sign issue and a reason, then select **Continue to review**.
 3. **Review and submit** — Add optional restrictions, confirm the map location, and submit. A confirmation appears after saving.
 

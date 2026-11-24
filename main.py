@@ -4,6 +4,8 @@ import json
 from html import escape
 from datetime import datetime
 import folium
+from folium.plugins import Draw
+import math
 from streamlit_folium import st_folium
 import pandas as pd
 import streamlit.components.v1 as components
@@ -126,10 +128,33 @@ def restriction_summary(stored):
     details = json.loads(stored or "{}")
     parts = []
     for label, value in details.items():
-        if value and value != "Unknown":
+        if not label.startswith("_") and value and value != "Unknown":
             rendered = ", ".join(value) if isinstance(value, list) else value
             parts.append(f"{label}: {rendered}")
     return " · ".join(parts) or "Restrictions not recorded"
+
+
+def selected_area(feature):
+    if not isinstance(feature, dict):
+        return None
+    geometry = feature.get("geometry", {})
+    if geometry.get("type") != "Polygon":
+        return None
+    rings = geometry.get("coordinates", [])
+    if len(rings) != 1 or not 4 <= len(rings[0]) <= 200:
+        return None
+    ring = rings[0]
+    for point in ring:
+        if len(point) != 2 or not all(isinstance(n, (int, float)) and math.isfinite(n) for n in point):
+            return None
+        if not (-180 <= point[0] <= 180 and -90 <= point[1] <= 90):
+            return None
+    if ring[0] != ring[-1] or len({tuple(p) for p in ring}) < 3:
+        return None
+    area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:]))
+    if abs(area) < 1e-12:
+        return None
+    return {"type": "Polygon", "coordinates": rings}
 
 
 def upvote_report(report_id):
@@ -325,7 +350,7 @@ if page == "Map":
             else:
                 st.caption(f"{number}. {title}")
     if step == 1:
-        st.markdown("**Step 1 — Choose your city, then tap the exact location on the map.**")
+        st.markdown("**Step 1 — Choose your city, then mark a spot or draw an area on the map.**")
     else:
         st.caption("Your selected location is marked on the map. Continue with the steps below.")
 
@@ -338,6 +363,17 @@ if page == "Map":
             key="city_selector"
         )
     
+    selection_mode = st.radio("Mark the location", ["Spot", "Area"], horizontal=True)
+    if selection_mode != st.session_state.get("selection_mode", "Spot"):
+        st.session_state.selection_mode = selection_mode
+        st.session_state.report_in_progress = False
+        st.session_state.report_step = 1
+        st.session_state.pop("report_area", None)
+        st.session_state.pop("last_report_point", None)
+        st.rerun()
+    if selection_mode == "Area":
+        st.caption("Choose the polygon tool on the map, draw around the parking area, and click the first corner to finish. Use the edit or bin tool to adjust or remove it. Include only spaces with the same restrictions.")
+
     # Get coordinates for selected city
     city_lat, city_lng = CITIES[selected_city]
     
@@ -357,6 +393,14 @@ if page == "Map":
         format_func=lambda value: "Free parking" if value == "Free Parking" else "Sign issues",
         help="Choose which community reports to display."
     )
+    if selection_mode == "Area":
+        Draw(
+            export=False,
+            draw_options={"polygon": {"allowIntersection": False}, "polyline": False,
+                          "rectangle": False, "circle": False, "circlemarker": False, "marker": False},
+            edit_options={"edit": True, "remove": True},
+        ).add_to(m)
+
     for report in reports:
         if report[3] not in visible_types:
             continue
@@ -381,6 +425,14 @@ if page == "Map":
         <small>{created}</small>
         """
         
+        stored_area = json.loads(restrictions or "{}").get("_area")
+        if stored_area:
+            folium.GeoJson(
+                stored_area,
+                style_function=lambda feature, shade=color: {"color": shade, "fillOpacity": 0.18, "weight": 2},
+                popup=folium.Popup(popup_text, max_width=300),
+                tooltip=f"Report #{report_id} · parking area",
+            ).add_to(m)
         folium.Marker(
             location=[lat, lng],
             popup=folium.Popup(popup_text, max_width=250),
@@ -396,10 +448,30 @@ if page == "Map":
             popup="📝 Report in progress"
         ).add_to(m)
     
-    map_data = st_folium(m, use_container_width=True, height=480)
+    if st.session_state.get("report_area") and st.session_state.get("report_in_progress"):
+        folium.GeoJson(st.session_state.report_area, name="Selected area").add_to(m)
+    map_data = st_folium(
+        m, use_container_width=True, height=480,
+        key=f"parking_map_{selection_mode}_{st.session_state.get('map_generation', 0)}"
+    )
+    if selection_mode == "Area":
+        drawings = (map_data or {}).get("all_drawings") or []
+        area = selected_area(drawings[-1]) if drawings else None
+        if area:
+            if st.button("Use this area", type="primary"):
+                ring = area["coordinates"][0][:-1]
+                st.session_state.report_lat = sum(p[1] for p in ring) / len(ring)
+                st.session_state.report_lng = sum(p[0] for p in ring) / len(ring)
+                st.session_state.report_area = area
+                st.session_state.report_in_progress = True
+                st.session_state.report_step = 2
+                st.session_state.location_confirmation = False
+                st.rerun()
+        elif step == 1:
+            st.caption("Finish drawing an area to continue.")
     
     # Process each new location once so form reruns retain their step.
-    if map_data and map_data.get("last_clicked"):
+    if selection_mode == "Spot" and map_data and map_data.get("last_clicked"):
         click = map_data["last_clicked"]
         point = (click["lat"], click["lng"])
         if point != st.session_state.get("last_report_point"):
@@ -489,6 +561,7 @@ if page == "Map":
                     source = st.text_input("Official information URL (optional)", max_chars=500)
                     checked = st.checkbox("I checked these conditions on site today")
                     restriction_details = {
+                    "_area": st.session_state.get("report_area"),
                         "Vehicle types": vehicles, "Reserved access": access, "Charging": charging,
                         "Hours and payment": conditions, "Size limits": dimensions,
                         "Motorhome parking": motorhome, "Overnight / camping": overnight,
@@ -508,6 +581,9 @@ if page == "Map":
                     add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, st.session_state.report_desc, restriction_details)
                     st.session_state.report_saved = True
                     st.session_state.report_step = 1
+                    st.session_state.map_generation = st.session_state.get("map_generation", 0) + 1
+                    st.session_state.pop("report_area", None)
+                    st.session_state.pop("last_report_point", None)
                     st.session_state.report_in_progress = False
                     st.session_state.reset_location_confirmation = True
                     st.rerun()
