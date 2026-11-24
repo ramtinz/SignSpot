@@ -66,7 +66,7 @@ streamlit run main.py
 ## 📖 How to Use
 
 1. **Map View** - See all parking reports on the map
-2. **Click Location** - Select where you want to report, or use "🔄 Use My Location" for current GPS position
+2. **Click Location** - Select where you want to report on the map, then confirm the selected location in the form
 3. **Choose Type** - Problematic Paid Parking or Free Parking
 4. **Select Preset Reason** - Choose one approved preset reason
 5. **Vote** - Upvote/downvote existing reports to verify accuracy
@@ -83,12 +83,6 @@ streamlit run main.py
 Non-Commercial License © 2026 Ramtin Zargari Marandi
 
 Free for non-commercial use. Commercial use requires permission. See [LICENSE](LICENSE) for details.
-
-## ⚖️ Terms, Privacy & Conduct
-
-- [Terms of Use](TERMS.md)
-- [Privacy Notice](PRIVACY.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## 🤝 Collaboration & Enquiries
 

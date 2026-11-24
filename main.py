@@ -439,7 +439,11 @@ if page == "Map":
     st.divider()
     st.markdown("<h3 style='font-size: 1.15rem;'>Add a parking report</h3>", unsafe_allow_html=True)
     
-    st.markdown(f"**Selected Location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
+    location_selected = bool(st.session_state.get("report_in_progress", False))
+    if location_selected:
+        st.markdown(f"**Selected location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
+    else:
+        st.info("Tap a location on the map before submitting a report.")
     # Area type selection outside form
     issue_type = st.selectbox(
         "What's the area?",
@@ -466,6 +470,9 @@ if page == "Map":
             "Free weekend 📅": "Free parking on weekends"
         }
     
+    if st.session_state.report_desc not in presets.values():
+        st.session_state.report_desc = next(iter(presets.values()))
+
     st.markdown("**Choose a reason:**")
     preset_cols = st.columns(3)
     
@@ -477,8 +484,11 @@ if page == "Map":
     # Show currently selected preset
     st.info(f"**Selected:** {st.session_state.report_desc}")
 
+    if st.session_state.pop("reset_location_confirmation", False):
+        st.session_state.location_confirmation = False
+
     # Form with just the submit button
-    with st.form("quick_report_form", border=True):
+    with st.form("quick_report_form", border=True, clear_on_submit=True):
         with st.expander("Parking restrictions (optional)"):
             st.caption("Record what the sign or official information says. Leave uncertain details as Unknown.")
             vehicles = st.multiselect("Vehicle types explicitly allowed", ["Car", "Motorcycle", "Motorhome / campervan", "Van"], help="Leave empty when the vehicle types are unclear.")
@@ -499,13 +509,19 @@ if page == "Map":
 
         st.caption("By submitting, you confirm your report is lawful, non-abusive, and does not include personal data.")
         
-        submitted = st.form_submit_button("Submit report", use_container_width=True, type="primary")
+        confirm_location = st.checkbox("I confirm the selected map location is correct", key="location_confirmation")
+        submitted = st.form_submit_button(
+            "Submit report", use_container_width=True, type="primary", disabled=not location_selected
+        )
         
-        if submitted:
+        if submitted and not (location_selected and confirm_location):
+            st.error("Select a location on the map and confirm it before submitting.")
+        elif submitted:
             add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, st.session_state.report_desc, restriction_details)
             st.success("✅ Report submitted! Thank you for helping the community.", icon="✅")
             st.session_state.report_in_progress = False
-            st.session_state.report_desc = "Parking sign hidden behind trees/bushes"
+            st.session_state.reset_location_confirmation = True
+            st.session_state.report_desc = next(iter(presets.values()))
             st.rerun()
     
     # Show summary stats
