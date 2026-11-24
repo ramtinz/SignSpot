@@ -44,7 +44,7 @@ A **unique community-driven app** that fills the gaps left by traditional parkin
 - Free parking zones
 - Community-verified free spots
 
-Area reports appear as shaded boundaries on the map. Use the drawing toolbar to edit or delete a boundary before confirming it. Include only parking spaces covered by the same reported conditions.
+Highlighting works like a thick marker. Choose a width of 4, 8, 12, or 20 metres and drag to add strokes. **Undo stroke** removes the latest stroke, **Clear selection** starts again, and **Move map** lets you pan or zoom. The highlighted ground area stays the same size as you zoom. Include only spaces covered by the same parking conditions. Saved areas appear as shaded boundaries on the map.
 
 ## Parking restrictions
 
@@ -67,7 +67,7 @@ streamlit run main.py
 
 ## 📖 How to Use
 
-1. **Choose a location** — Select your city and choose **Spot** or **Area**. Tap a spot, or draw a polygon and select **Use this area**.
+1. **Choose a location** — Select your city. Choose **Mark a spot** and tap, or **Highlight area** and drag over the parking spaces. Confirm with **Use selected location**.
 2. **Describe the spot** — Choose free parking or a sign issue and a reason, then select **Continue to review**.
 3. **Review and submit** — Add optional restrictions, confirm the map location, and submit. A confirmation appears after saving.
 
@@ -76,7 +76,8 @@ Use **Community reports** to browse and vote on existing reports.
 ## 🛠️ Tech Stack
 
 - **Framework**: Streamlit
-- **Maps**: Folium + OpenStreetMap
+- **Maps**: Leaflet + OpenStreetMap, with Turf for geographic highlighter strokes
+- **Map integration**: Local Streamlit component; no frontend build step
 - **Database**: SQLite
 - **Hosting**: Streamlit Cloud
 
@@ -120,3 +121,5 @@ Citation metadata is also available in [CITATION.cff](CITATION.cff).
 ---
 
 **Find free parking, warn others about tricky spots! 🅿️✅**
+
+The map component includes Leaflet and Turf, each under its own license. Their notices are included in [parking_map/frontend/vendor](parking_map/frontend/vendor).

@@ -1,14 +1,10 @@
 import streamlit as st
 import sqlite3
 import json
-from html import escape
 from datetime import datetime
-import folium
-from folium.plugins import Draw
 import math
-from streamlit_folium import st_folium
 import pandas as pd
-import streamlit.components.v1 as components
+from parking_map import parking_map
 
 # Page config
 st.set_page_config(
@@ -134,27 +130,42 @@ def restriction_summary(stored):
     return " · ".join(parts) or "Restrictions not recorded"
 
 
-def selected_area(feature):
-    if not isinstance(feature, dict):
+def selected_area(geometry):
+    if not isinstance(geometry, dict):
         return None
-    geometry = feature.get("geometry", {})
-    if geometry.get("type") != "Polygon":
+    shape = geometry.get("geometry", geometry)
+    if not isinstance(shape, dict):
         return None
-    rings = geometry.get("coordinates", [])
-    if len(rings) != 1 or not 4 <= len(rings[0]) <= 200:
+    kind = shape.get("type")
+    coordinates = shape.get("coordinates", [])
+    if kind not in ("Polygon", "MultiPolygon") or not isinstance(coordinates, list):
         return None
-    ring = rings[0]
-    for point in ring:
-        if len(point) != 2 or not all(isinstance(n, (int, float)) and math.isfinite(n) for n in point):
+    polygons = [coordinates] if kind == "Polygon" else coordinates
+    count = 0
+    if not polygons:
+        return None
+    for rings in polygons:
+        if not isinstance(rings, list) or not rings:
             return None
-        if not (-180 <= point[0] <= 180 and -90 <= point[1] <= 90):
-            return None
-    if ring[0] != ring[-1] or len({tuple(p) for p in ring}) < 3:
-        return None
-    area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:]))
-    if abs(area) < 1e-12:
-        return None
-    return {"type": "Polygon", "coordinates": rings}
+        for ring in rings:
+            if not isinstance(ring, list) or len(ring) < 4:
+                return None
+            count += len(ring)
+            if count > 5000:
+                return None
+            for point in ring:
+                if not isinstance(point, list) or len(point) != 2:
+                    return None
+                if not all(isinstance(n, (int, float)) and math.isfinite(n) for n in point):
+                    return None
+                if not (-180 <= point[0] <= 180 and -90 <= point[1] <= 90):
+                    return None
+            if ring[0] != ring[-1] or len({tuple(p) for p in ring}) < 3:
+                return None
+            area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:]))
+            if abs(area) < 1e-12:
+                return None
+    return {"type": kind, "coordinates": coordinates}
 
 
 def upvote_report(report_id):
@@ -350,7 +361,7 @@ if page == "Map":
             else:
                 st.caption(f"{number}. {title}")
     if step == 1:
-        st.markdown("**Step 1 — Choose your city, then mark a spot or draw an area on the map.**")
+        st.markdown("**Step 1 — Choose your city, then use Mark a spot or Highlight area on the map.**")
     else:
         st.caption("Your selected location is marked on the map. Continue with the steps below.")
 
@@ -363,124 +374,47 @@ if page == "Map":
             key="city_selector"
         )
     
-    selection_mode = st.radio("Mark the location", ["Spot", "Area"], horizontal=True)
-    if selection_mode != st.session_state.get("selection_mode", "Spot"):
-        st.session_state.selection_mode = selection_mode
-        st.session_state.report_in_progress = False
-        st.session_state.report_step = 1
-        st.session_state.pop("report_area", None)
-        st.session_state.pop("last_report_point", None)
-        st.rerun()
-    if selection_mode == "Area":
-        st.caption("Choose the polygon tool on the map, draw around the parking area, and click the first corner to finish. Use the edit or bin tool to adjust or remove it. Include only spaces with the same restrictions.")
-
-    # Get coordinates for selected city
-    city_lat, city_lng = CITIES[selected_city]
-    
-    # Get all reports
     reports = get_all_reports()
-    
-    # Create map centered on selected city
-    m = folium.Map(
-        location=[city_lat, city_lng],
-        zoom_start=13,
-        tiles="OpenStreetMap"
-    )
-    
     visible_types = st.multiselect(
         "Show on the map", ["Free Parking", "Paid Parking (Problematic)"],
         default=["Free Parking", "Paid Parking (Problematic)"],
         format_func=lambda value: "Free parking" if value == "Free Parking" else "Sign issues",
-        help="Choose which community reports to display."
     )
-    if selection_mode == "Area":
-        Draw(
-            export=False,
-            draw_options={"polygon": {"allowIntersection": False}, "polyline": False,
-                          "rectangle": False, "circle": False, "circlemarker": False, "marker": False},
-            edit_options={"edit": True, "remove": True},
-        ).add_to(m)
-
+    map_reports = []
     for report in reports:
-        if report[3] not in visible_types:
-            continue
         report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created, restrictions = report
-        color = ISSUE_COLORS.get(issue_type, 'blue')
-        
-        # Mark flagged reports with orange (if heavily flagged)
-        if flags >= 3:
-            color = 'red'
-            icon_str = 'times-circle'
-        else:
-            icon_str = 'parking' if issue_type == 'Free Parking' else 'exclamation-triangle'
-        
-        net_votes = upvotes - downvotes
-        
-        popup_text = f"""
-        <b>{issue_type} Sign</b><br>
-        {escape(desc or 'No description')}<br>
-        <small>{escape(restriction_summary(restrictions))}</small><br>
-        👍 {upvotes} | 👎 {downvotes} | Net: {net_votes:+d}<br>
-        🚩 {flags} flags<br>
-        <small>{created}</small>
-        """
-        
-        stored_area = json.loads(restrictions or "{}").get("_area")
-        if stored_area:
-            folium.GeoJson(
-                stored_area,
-                style_function=lambda feature, shade=color: {"color": shade, "fillOpacity": 0.18, "weight": 2},
-                popup=folium.Popup(popup_text, max_width=300),
-                tooltip=f"Report #{report_id} · parking area",
-            ).add_to(m)
-        folium.Marker(
-            location=[lat, lng],
-            popup=folium.Popup(popup_text, max_width=250),
-            icon=folium.Icon(color=color, icon=icon_str, prefix='fa'),
-            tooltip=f"{issue_type}: {desc[:30]}" if desc else issue_type
-        ).add_to(m)
-    
-    # Add a marker for the current report location if in progress
-    if 'report_in_progress' in st.session_state and st.session_state.report_in_progress:
-        folium.Marker(
-            location=[st.session_state.report_lat, st.session_state.report_lng],
-            icon=folium.Icon(color='blue', icon='pencil', prefix='fa'),
-            popup="📝 Report in progress"
-        ).add_to(m)
-    
-    if st.session_state.get("report_area") and st.session_state.get("report_in_progress"):
-        folium.GeoJson(st.session_state.report_area, name="Selected area").add_to(m)
-    map_data = st_folium(
-        m, use_container_width=True, height=480,
-        key=f"parking_map_{selection_mode}_{st.session_state.get('map_generation', 0)}"
+        if issue_type in visible_types:
+            map_reports.append({
+                "id": report_id, "lat": lat, "lng": lng, "type": issue_type,
+                "description": desc or "", "upvotes": upvotes, "downvotes": downvotes,
+                "flags": flags, "created": created,
+                "area": json.loads(restrictions or "{}").get("_area"),
+                "restrictions": restriction_summary(restrictions),
+            })
+    selection = None
+    if st.session_state.get("report_in_progress"):
+        selection = {"lat": st.session_state.report_lat, "lng": st.session_state.report_lng,
+                     "geometry": st.session_state.get("report_area")}
+    result = parking_map(
+        center=list(CITIES[selected_city]), reports=map_reports, selection=selection,
+        key=f"parking_map_{st.session_state.get('map_generation', 0)}",
     )
-    if selection_mode == "Area":
-        drawings = (map_data or {}).get("all_drawings") or []
-        area = selected_area(drawings[-1]) if drawings else None
-        if area:
-            if st.button("Use this area", type="primary"):
-                ring = area["coordinates"][0][:-1]
-                st.session_state.report_lat = sum(p[1] for p in ring) / len(ring)
-                st.session_state.report_lng = sum(p[0] for p in ring) / len(ring)
-                st.session_state.report_area = area
-                st.session_state.report_in_progress = True
-                st.session_state.report_step = 2
-                st.session_state.location_confirmation = False
-                st.rerun()
-        elif step == 1:
-            st.caption("Finish drawing an area to continue.")
-    
-    # Process each new location once so form reruns retain their step.
-    if selection_mode == "Spot" and map_data and map_data.get("last_clicked"):
-        click = map_data["last_clicked"]
-        point = (click["lat"], click["lng"])
-        if point != st.session_state.get("last_report_point"):
-            st.session_state.last_report_point = point
-            st.session_state.report_lat, st.session_state.report_lng = point
+    if isinstance(result, dict) and isinstance(result.get("id"), str) and result["id"] != st.session_state.get("last_map_selection"):
+        lat, lng = result.get("lat"), result.get("lng")
+        valid_point = all(isinstance(n, (int, float)) and math.isfinite(n) for n in (lat, lng))
+        area = selected_area(result["geometry"]) if result.get("geometry") else None
+        if valid_point and -90 <= lat <= 90 and -180 <= lng <= 180 and (not result.get("geometry") or area):
+            st.session_state.last_map_selection = result["id"]
+            st.session_state.report_lat = lat
+            st.session_state.report_lng = lng
+            st.session_state.report_area = area
             st.session_state.report_in_progress = True
             st.session_state.report_step = 2
             st.session_state.location_confirmation = False
             st.rerun()
+        else:
+            st.error("The map selection is invalid. Please clear it and select again.")
+    map_data = {"last_clicked": {"lat": st.session_state.report_lat, "lng": st.session_state.report_lng}} if st.session_state.get("report_in_progress") else None
 
     location_selected = bool(st.session_state.get("report_in_progress", False))
     if location_selected:
@@ -583,7 +517,7 @@ if page == "Map":
                     st.session_state.report_step = 1
                     st.session_state.map_generation = st.session_state.get("map_generation", 0) + 1
                     st.session_state.pop("report_area", None)
-                    st.session_state.pop("last_report_point", None)
+                    st.session_state.pop("last_map_selection", None)
                     st.session_state.report_in_progress = False
                     st.session_state.reset_location_confirmation = True
                     st.rerun()
