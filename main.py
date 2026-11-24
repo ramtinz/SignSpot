@@ -14,106 +14,31 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for modern styling
+# Shared interface styling
 st.markdown("""
 <style>
-    * {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    [data-testid="stMainBlockContainer"] {
-        padding: 2rem 1rem;
-    }
-    
-    h1, h2, h3 {
-        color: #1a1a2e;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-    }
-    
-    .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 3rem 2rem;
-        border-radius: 12px;
-        color: white;
-        text-align: center;
-        margin-bottom: 2rem;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
-    }
-    
-    .main-header h1 {
-        color: white;
-        font-size: 2.5rem;
-        margin: 0;
-        font-weight: 800;
-    }
-    
-    .main-header p {
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 1.1rem;
-        margin: 0.5rem 0 0 0;
-    }
-    
-    .info-card {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        padding: 1.5rem;
-        border-radius: 8px;
-        border-left: 4px solid #667eea;
-        margin-bottom: 1.5rem;
-    }
-    
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 8px;
-        color: white;
-        text-align: center;
-    }
-    
-    .metric-card h3 {
-        color: rgba(255, 255, 255, 0.8);
-        margin: 0;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .metric-card .value {
-        font-size: 2rem;
-        font-weight: 800;
-        color: white;
-        margin: 0.5rem 0 0 0;
-    }
-    
-    [data-testid="stButton"] > button {
-        width: 100%;
-        border-radius: 8px;
-        font-weight: 600;
-        padding: 0.75rem 1.5rem;
-        border: none;
-        transition: all 0.3s ease;
-    }
-    
-    [data-testid="stButton"] > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
-    }
-    
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        border-radius: 8px 8px 0 0;
-        background-color: #f0f2f6;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background-color: #667eea;
-        color: white;
-    }
+[data-testid="stAppViewContainer"] {background:#f7f9f8;color:#192d27;}
+[data-testid="stMainBlockContainer"] {max-width:1120px;padding:2rem 1.5rem 3rem;}
+h1,h2,h3 {color:#173e32!important;letter-spacing:-.025em;}
+.signspot-header {padding:.25rem 0 1.25rem;border-bottom:1px solid #dce5df;margin-bottom:1.25rem;}
+.signspot-header p {color:#5c7168;margin:.35rem 0 0;font-size:1rem;}
+.signspot-header h1 {font-size:2rem;margin:0;}
+[data-testid="stButton"] > button,[data-testid="stFormSubmitButton"] > button {
+ border-radius:10px;min-height:44px;border:1px solid #d0ded5;box-shadow:none;}
+button[kind="primary"] {background:#17674d;border-color:#17674d;color:white;}
+[data-testid="stForm"] {background:white;border:1px solid #dce5df;border-radius:14px;padding:1.2rem;}
+[data-testid="stMetric"] {border:1px solid #dce5df;border-radius:12px;background:white;padding:.8rem;}
+[data-testid="stMetricValue"] {color:#17674d;font-size:1.7rem;}
+[data-baseweb="tab-list"] {gap:1rem;border-bottom:1px solid #dce5df;}
+[data-baseweb="tab"] {background:transparent;font-weight:600;}
+[data-testid="stAlert"] {border-radius:10px;}
+iframe {border-radius:14px;}
+@media(max-width:640px) {
+ [data-testid="stMainBlockContainer"] {padding:1rem .8rem 2rem;}
+ .signspot-header h1 {font-size:1.65rem;}
+ [data-testid="stHorizontalBlock"] {flex-wrap:wrap;gap:.65rem;}
+ [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {min-width:130px;flex:1 1 130px;}
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -278,7 +203,7 @@ init_db()
 
 # Color mapping for markers
 ISSUE_COLORS = {
-    'Paid Parking (Problematic)': 'red',
+    'Paid Parking (Problematic)': 'orange',
     'Free Parking': 'green'
 }
 
@@ -355,56 +280,31 @@ if 'report_type' not in st.session_state:
 if 'report_desc' not in st.session_state:
     st.session_state.report_desc = "Parking sign hidden behind trees/bushes"
 
-# Header with logo (centered)
-left_spacer, center_header, right_spacer = st.columns([1, 2, 1])
-
-with center_header:
-    # Logo - centered within the column
-    logo_col1, logo_col2, logo_col3 = st.columns([1, 1, 1])
-    with logo_col2:
-        try:
-            st.image('assets/signspotlogo_v1.png', width=300)
-        except:
-            st.markdown("<div style='text-align: center; font-size: 2rem;'>🅿️</div>", unsafe_allow_html=True)
-
-    # Title and subtitle
-    st.markdown("""
-    <div style="text-align: center; padding-top: 10px;">
-        <h1 style="margin: 0; color: #1f77b4; font-size: 2rem;">SignSpot</h1>
-        <p style="margin: 5px 0 0 0; color: #666; font-size: 0.95rem;"><i>Spot we trust</i> — Parking sign reporting made easy</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Help button
-    help_col1, help_col2, help_col3 = st.columns([1, 1, 1])
-    with help_col2:
-        if st.button("ℹ️ What is SignSpot?", use_container_width=True, type="secondary"):
-            show_help()
-
-    # Navigation menu - centered within the column
-    nav_col1, nav_col2, nav_col3 = st.columns([1, 1, 1])
-    with nav_col2:
-        page = st.radio(
-            "Navigation",
-            ["🗺️ Map - Home", "📊 Reports"],
-            horizontal=True,
-            label_visibility="collapsed"
-        )
+# Compact header and navigation
+logo, brand, help_control = st.columns([1, 6, 2])
+with logo:
+    st.image("assets/signspotlogo_v1.png", width=72)
+with brand:
+    st.markdown("""<div class="signspot-header"><h1>SignSpot</h1>
+    <p>Find parking. Report unclear signs.</p></div>""", unsafe_allow_html=True)
+with help_control:
+    if st.button("How it works", use_container_width=True):
+        show_help()
+page = st.radio("Navigation", ["Map", "Community reports"], horizontal=True, label_visibility="collapsed")
 
 # Increment page views on app load (use session state to count only once per session)
 if 'view_counted' not in st.session_state:
     increment_page_views()
     st.session_state.view_counted = True
 
-if page == "🗺️ Map - Home":
-    st.markdown("<h2 style='text-align: center; font-size: 1.5rem;'>📍 Parking Areas Map</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>Click anywhere on the map to select a location, then scroll down to submit your report</p>", unsafe_allow_html=True)
+if page == "Map":
+    st.markdown("<h2 style='text-align: center; font-size: 1.5rem;'>Explore parking reports</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666; font-size: 0.9rem;'>Choose a city, explore reports, or tap the map to add a spot.</p>", unsafe_allow_html=True)
     
     # City selector - centered above map
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    with st.container():
         selected_city = st.selectbox(
-            "Select City to Center Map",
+            "Explore a city",
             options=list(CITIES.keys()),
             index=0,
             key="city_selector"
@@ -423,8 +323,14 @@ if page == "🗺️ Map - Home":
         tiles="OpenStreetMap"
     )
     
-    # Add markers for each report
+    visible_types = st.multiselect(
+        "Show on the map", ["Free Parking", "Paid Parking (Problematic)"],
+        default=["Free Parking", "Paid Parking (Problematic)"],
+        help="Choose which community reports to display."
+    )
     for report in reports:
+        if report[3] not in visible_types:
+            continue
         report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
         color = ISSUE_COLORS.get(issue_type, 'blue')
         
@@ -433,7 +339,7 @@ if page == "🗺️ Map - Home":
             color = 'red'
             icon_str = 'times-circle'
         else:
-            icon_str = 'exclamation'
+            icon_str = 'parking' if issue_type == 'Free Parking' else 'exclamation-triangle'
         
         net_votes = upvotes - downvotes
         
@@ -460,10 +366,7 @@ if page == "🗺️ Map - Home":
             popup="📝 Report in progress"
         ).add_to(m)
     
-    # Display map with click capture - centered with larger side margins for mobile scrolling
-    col1, col2, col3 = st.columns([1, 4, 1])
-    with col2:
-        map_data = st_folium(m, width=850, height=560)
+    map_data = st_folium(m, use_container_width=True, height=480)
     
     # Handle map clicks
     if map_data and map_data['last_clicked']:
@@ -518,7 +421,7 @@ if page == "🗺️ Map - Home":
     
     # Report form (always visible for convenience)
     st.divider()
-    st.markdown("<h3 style='font-size: 1.15rem;'>📝 Quick Report</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='font-size: 1.15rem;'>Add a parking report</h3>", unsafe_allow_html=True)
     
     st.markdown(f"**Selected Location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
     # Area type selection outside form
@@ -548,10 +451,10 @@ if page == "🗺️ Map - Home":
         }
     
     st.markdown("**Choose a reason:**")
-    preset_cols = st.columns(5)
+    preset_cols = st.columns(3)
     
     for idx, (preset_label, preset_text) in enumerate(presets.items()):
-        if preset_cols[idx].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
+        if preset_cols[idx % 3].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
             st.session_state.report_desc = preset_text
             st.rerun()
     
@@ -562,12 +465,11 @@ if page == "🗺️ Map - Home":
     with st.form("quick_report_form", border=True):
         st.caption("By submitting, you confirm your report is lawful, non-abusive, and does not include personal data.")
         
-        submitted = st.form_submit_button("🚀 Submit Report", use_container_width=True, type="primary")
+        submitted = st.form_submit_button("Submit report", use_container_width=True, type="primary")
         
         if submitted:
             add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, st.session_state.report_desc)
             st.success("✅ Report submitted! Thank you for helping the community.", icon="✅")
-            st.balloons()
             st.session_state.report_in_progress = False
             st.session_state.report_desc = "Parking sign hidden behind trees/bushes"
             st.rerun()
@@ -597,7 +499,7 @@ if page == "🗺️ Map - Home":
     else:
         st.info("📍 No reports yet. Click on the map or use the form below to report!", icon="ℹ️")
 
-elif page == "📊 Reports":
+elif page == "Community reports":
     st.subheader("All Parking Areas")
     
     reports = get_all_reports()
