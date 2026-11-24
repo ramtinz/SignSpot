@@ -44,6 +44,12 @@ A **unique community-driven app** that fills the gaps left by traditional parkin
 - Free parking zones
 - Community-verified free spots
 
+## Parking restrictions
+
+When adding a report, open **Parking restrictions (optional)** to record vehicle types, reserved access, charging requirements, hours, payment, size limits, and an official information URL. Electric **AND** authorized shared cars and electric **OR** authorized shared cars have separate options. Motorhome parking and overnight/camping permission are recorded separately. Use **Unknown** for conditions you cannot confirm.
+
+Restrictions appear in map popups and the community reports list. Reports created before these fields were introduced show **Restrictions not recorded**.
+
 ## 🏃 Quick Start
 
 ### Online (Recommended)

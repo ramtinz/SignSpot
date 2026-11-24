@@ -1,5 +1,7 @@
 import streamlit as st
 import sqlite3
+import json
+from html import escape
 from datetime import datetime
 import folium
 from streamlit_folium import st_folium
@@ -80,6 +82,9 @@ def init_db():
     if 'flags' not in columns:
         c.execute('ALTER TABLE reports ADD COLUMN flags INTEGER DEFAULT 0')
     
+    if 'restrictions' not in columns:
+        c.execute("ALTER TABLE reports ADD COLUMN restrictions TEXT NOT NULL DEFAULT '{}'")
+
     # Create page_views table if it doesn't exist
     c.execute('''
         CREATE TABLE IF NOT EXISTS page_views (
@@ -101,21 +106,31 @@ def get_all_reports():
     """Fetch all reports from database"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('SELECT id, latitude, longitude, issue_type, description, upvotes, downvotes, flags, created_at FROM reports ORDER BY created_at DESC')
+    c.execute('SELECT id, latitude, longitude, issue_type, description, upvotes, downvotes, flags, created_at, restrictions FROM reports ORDER BY created_at DESC')
     reports = c.fetchall()
     conn.close()
     return reports
 
-def add_report(lat, lng, issue_type, description):
+def add_report(lat, lng, issue_type, description, restrictions=None):
     """Add a new report to database"""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO reports (latitude, longitude, issue_type, description)
-        VALUES (?, ?, ?, ?)
-    ''', (lat, lng, issue_type, description))
+        INSERT INTO reports (latitude, longitude, issue_type, description, restrictions)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (lat, lng, issue_type, description, json.dumps(restrictions or {}, ensure_ascii=False)))
     conn.commit()
     conn.close()
+
+def restriction_summary(stored):
+    details = json.loads(stored or "{}")
+    parts = []
+    for label, value in details.items():
+        if value and value != "Unknown":
+            rendered = ", ".join(value) if isinstance(value, list) else value
+            parts.append(f"{label}: {rendered}")
+    return " · ".join(parts) or "Restrictions not recorded"
+
 
 def upvote_report(report_id):
     """Upvote a report (agree with validity)"""
@@ -331,7 +346,7 @@ if page == "Map":
     for report in reports:
         if report[3] not in visible_types:
             continue
-        report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
+        report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created, restrictions = report
         color = ISSUE_COLORS.get(issue_type, 'blue')
         
         # Mark flagged reports with orange (if heavily flagged)
@@ -345,7 +360,8 @@ if page == "Map":
         
         popup_text = f"""
         <b>{issue_type} Sign</b><br>
-        {desc if desc else 'No description'}<br>
+        {escape(desc or 'No description')}<br>
+        <small>{escape(restriction_summary(restrictions))}</small><br>
         👍 {upvotes} | 👎 {downvotes} | Net: {net_votes:+d}<br>
         🚩 {flags} flags<br>
         <small>{created}</small>
@@ -384,7 +400,7 @@ if page == "Map":
         # Find reports within ~50 meters of click
         nearby_reports = []
         for report in reports:
-            report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
+            report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created, restrictions = report
             # Rough distance calculation (not accurate but good enough for UI)
             distance = ((lat - clicked_lat)**2 + (lng - clicked_lng)**2)**0.5
             if distance < 0.001:  # Roughly 100 meters
@@ -396,7 +412,7 @@ if page == "Map":
             st.info("Found reports near your clicked location. Vote to confirm accuracy!", icon="🗳️")
             
             for report in nearby_reports:
-                report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
+                report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created, restrictions = report
                 net_votes = upvotes - downvotes
                 
                 col1, col2, col3, col4, col5 = st.columns([2, 2, 1, 1, 1])
@@ -463,12 +479,30 @@ if page == "Map":
 
     # Form with just the submit button
     with st.form("quick_report_form", border=True):
+        with st.expander("Parking restrictions (optional)"):
+            st.caption("Record what the sign or official information says. Leave uncertain details as Unknown.")
+            vehicles = st.multiselect("Vehicle types explicitly allowed", ["Car", "Motorcycle", "Motorhome / campervan", "Van"], help="Leave empty when the vehicle types are unclear.")
+            access = st.selectbox("Reserved access", ["Unknown", "No reserved access stated", "Electric vehicles only", "Authorized shared cars only", "Electric AND authorized shared cars", "Electric OR authorized shared cars", "Disabled parking permit", "Residents / permit holders"])
+            charging = st.selectbox("Charging condition", ["Unknown", "Charging required", "Charging optional", "No charger"])
+            conditions = st.text_input("Hours, payment and maximum stay", max_chars=240, placeholder="For example, free on Sundays; maximum 2 hours")
+            dimensions = st.text_input("Height, length or weight limits", max_chars=160, placeholder="For example, maximum height 2.1 m")
+            motorhome = st.selectbox("Motorhome parking permission", ["Unknown", "Allowed", "Prohibited", "Conditional — see hours and restrictions"])
+            overnight = st.selectbox("Overnight stay / camping permission", ["Unknown", "Overnight stay explicitly allowed", "Camping explicitly allowed", "Prohibited", "Conditional — see hours and restrictions"])
+            source = st.text_input("Official information URL (optional)", max_chars=500)
+            checked = st.checkbox("I checked these conditions on site today")
+            restriction_details = {
+                "Vehicle types": vehicles, "Reserved access": access, "Charging": charging,
+                "Hours and payment": conditions, "Size limits": dimensions,
+                "Motorhome parking": motorhome, "Overnight / camping": overnight,
+                "Source": source, "Checked on site": datetime.now().date().isoformat() if checked else "",
+            }
+
         st.caption("By submitting, you confirm your report is lawful, non-abusive, and does not include personal data.")
         
         submitted = st.form_submit_button("Submit report", use_container_width=True, type="primary")
         
         if submitted:
-            add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, st.session_state.report_desc)
+            add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, st.session_state.report_desc, restriction_details)
             st.success("✅ Report submitted! Thank you for helping the community.", icon="✅")
             st.session_state.report_in_progress = False
             st.session_state.report_desc = "Parking sign hidden behind trees/bushes"
@@ -508,7 +542,7 @@ elif page == "Community reports":
         # Create DataFrame
         df_data = []
         for report in reports:
-            report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created = report
+            report_id, lat, lng, issue_type, desc, upvotes, downvotes, flags, created, restrictions = report
             total_votes = upvotes + downvotes
             net_votes = upvotes - downvotes
             agreement = round(100 * upvotes / total_votes) if total_votes > 0 else 0
@@ -518,6 +552,7 @@ elif page == "Community reports":
                 'Type': issue_type,
                 'Location': f"{lat:.4f}, {lng:.4f}",
                 'Description': desc[:50] + "..." if len(desc) > 50 else desc,
+                'Restrictions': restriction_summary(restrictions),
                 '👍': upvotes,
                 '👎': downvotes,
                 'Net': net_votes,
@@ -580,6 +615,7 @@ elif page == "Community reports":
                     st.write(f"{row['Type']}")
                 with col3:
                     st.write(f"{row['Description']}")
+                    st.caption(row["Restrictions"])
                 with col4:
                     if st.button("👍", key=f"upvote_{row['ID']}", help="Agree with this report"):
                         upvote_report(row['ID'])
