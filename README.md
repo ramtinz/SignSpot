@@ -65,11 +65,11 @@ streamlit run main.py
 
 ## 📖 How to Use
 
-1. **Map View** - Browse parking reports and filter free parking or sign issues
-2. **Report a Spot** - Tap the map to open the form directly below it, then confirm the selected location
-3. **Choose Type** - Problematic Paid Parking or Free Parking
-4. **Select Preset Reason** - Choose one approved preset reason
-5. **Vote** - Upvote/downvote existing reports to verify accuracy
+1. **Choose a location** — Select your city and tap the exact spot on the map.
+2. **Describe the spot** — Choose free parking or a sign issue and a reason, then select **Continue to review**.
+3. **Review and submit** — Add optional restrictions, confirm the map location, and submit. A confirmation appears after saving.
+
+Use **Community reports** to browse and vote on existing reports.
 
 ## 🛠️ Tech Stack
 

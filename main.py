@@ -313,15 +313,21 @@ if 'view_counted' not in st.session_state:
     st.session_state.view_counted = True
 
 if page == "Map":
-    action, hint = st.columns([1, 3])
-    with action:
-        if st.button("Report a spot", type="primary", use_container_width=True):
-            st.session_state.choosing_spot = True
-    with hint:
-        if st.session_state.get("choosing_spot"):
-            st.info("Tap the exact spot on the map. The report form opens below it.")
-        else:
-            st.caption("Explore the map, or tap a spot to add a report.")
+    step = st.session_state.get("report_step", 1)
+    if st.session_state.pop("report_saved", False):
+        st.success("Report saved. You can find it on the map and in Community reports.")
+    st.caption("ADD A REPORT")
+    steps = st.columns(3)
+    for number, (column, title) in enumerate(zip(steps, ["Choose a location", "Describe the spot", "Review and submit"]), 1):
+        with column:
+            if number == step:
+                st.info(f"{number}. {title}")
+            else:
+                st.caption(f"{number}. {title}")
+    if step == 1:
+        st.markdown("**Step 1 — Choose your city, then tap the exact location on the map.**")
+    else:
+        st.caption("Your selected location is marked on the map. Continue with the steps below.")
 
     # City selector - centered above map
     with st.container():
@@ -392,100 +398,119 @@ if page == "Map":
     
     map_data = st_folium(m, use_container_width=True, height=480)
     
-    # Handle map clicks
-    if map_data and map_data['last_clicked']:
-        st.session_state.report_lat = map_data['last_clicked']['lat']
-        st.session_state.report_lng = map_data['last_clicked']['lng']
-        st.session_state.report_in_progress = True
-        st.info(f"📍 Location selected: {st.session_state.report_lat:.4f}, {st.session_state.report_lng:.4f}")
-        st.session_state.choosing_spot = False
+    # Process each new location once so form reruns retain their step.
+    if map_data and map_data.get("last_clicked"):
+        click = map_data["last_clicked"]
+        point = (click["lat"], click["lng"])
+        if point != st.session_state.get("last_report_point"):
+            st.session_state.last_report_point = point
+            st.session_state.report_lat, st.session_state.report_lng = point
+            st.session_state.report_in_progress = True
+            st.session_state.report_step = 2
+            st.session_state.location_confirmation = False
+            st.rerun()
 
     location_selected = bool(st.session_state.get("report_in_progress", False))
     if location_selected:
         st.divider()
-        st.markdown("<h3 style='font-size: 1.15rem;'>Add a parking report</h3>", unsafe_allow_html=True)
+        st.subheader("Step 2 — Describe the spot" if step == 2 else "Step 3 — Review and submit")
 
         st.markdown(f"**Selected location:** {st.session_state.report_lat:.6f}, {st.session_state.report_lng:.6f}")
-        # Area type selection outside form
-        issue_type = st.selectbox(
-            "What are you reporting?",
-            ["Paid Parking (Problematic)", "Free Parking"],
-            format_func=lambda value: "Unclear or damaged sign" if value == "Paid Parking (Problematic)" else "Free parking",
-            index=0,
-            help="Paid Parking = Hidden, faded, damaged, or unclear paid parking signs. Free Parking = Free spots."
-        )
+        issue_type = st.session_state.get("selected_report_type", "Paid Parking (Problematic)")
+        if step == 2:
+            # Area type selection outside form
+            issue_type = st.selectbox(
+                "What are you reporting?",
+                ["Paid Parking (Problematic)", "Free Parking"],
+                format_func=lambda value: "Unclear or damaged sign" if value == "Paid Parking (Problematic)" else "Free parking",
+                index=1 if issue_type == "Free Parking" else 0,
+                key="report_issue_type",
+                help="Paid Parking = Hidden, faded, damaged, or unclear paid parking signs. Free Parking = Free spots."
+            )
 
-        # Define presets based on area type
-        if issue_type == "Paid Parking (Problematic)":
-            presets = {
-                "Hidden sign 🌳": "Parking sign hidden behind trees/bushes",
-                "Faded sign ⚠️": "Sign is faded/hard to read",
-                "No sign 🚫": "Should have a parking sign here",
-                "Broken sign 💔": "Sign is damaged/broken",
-                "Confusing sign ❓": "Sign is confusing or unclear"
-            }
-        else:  # Free Parking
-            presets = {
-                "Free spot! 💚": "Free parking available here",
-                "Free street 🅿️": "Free street parking area",
-                "Free lot 🏞️": "Free parking lot",
-                "Free evening 🌙": "Free parking after hours",
-                "Free weekend 📅": "Free parking on weekends"
-            }
+            # Define presets based on area type
+            if issue_type == "Paid Parking (Problematic)":
+                presets = {
+                    "Hidden sign 🌳": "Parking sign hidden behind trees/bushes",
+                    "Faded sign ⚠️": "Sign is faded/hard to read",
+                    "No sign 🚫": "Should have a parking sign here",
+                    "Broken sign 💔": "Sign is damaged/broken",
+                    "Confusing sign ❓": "Sign is confusing or unclear"
+                }
+            else:  # Free Parking
+                presets = {
+                    "Free spot! 💚": "Free parking available here",
+                    "Free street 🅿️": "Free street parking area",
+                    "Free lot 🏞️": "Free parking lot",
+                    "Free evening 🌙": "Free parking after hours",
+                    "Free weekend 📅": "Free parking on weekends"
+                }
 
-        if st.session_state.report_desc not in presets.values():
-            st.session_state.report_desc = next(iter(presets.values()))
+            if st.session_state.report_desc not in presets.values():
+                st.session_state.report_desc = next(iter(presets.values()))
 
-        st.markdown("**Choose a reason:**")
-        preset_cols = st.columns(3)
+            st.markdown("**Choose a reason:**")
+            preset_cols = st.columns(3)
 
-        for idx, (preset_label, preset_text) in enumerate(presets.items()):
-            if preset_cols[idx % 3].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
-                st.session_state.report_desc = preset_text
+            for idx, (preset_label, preset_text) in enumerate(presets.items()):
+                if preset_cols[idx % 3].button(preset_label, use_container_width=True, key=f"preset_{idx}"):
+                    st.session_state.report_desc = preset_text
+                    st.rerun()
+
+            # Show currently selected preset
+            st.info(f"**Selected:** {st.session_state.report_desc}")
+
+            if st.button("Continue to review", type="primary"):
+                st.session_state.selected_report_type = issue_type
+                st.session_state.report_step = 3
                 st.rerun()
-
-        # Show currently selected preset
-        st.info(f"**Selected:** {st.session_state.report_desc}")
+        else:
+            st.write("Free parking" if issue_type == "Free Parking" else "Unclear or damaged sign")
+            st.write(st.session_state.report_desc)
+            if st.button("Back to description"):
+                st.session_state.report_step = 2
+                st.rerun()
 
         if st.session_state.pop("reset_location_confirmation", False):
             st.session_state.location_confirmation = False
 
-        # Form with just the submit button
-        with st.form("quick_report_form", border=True, clear_on_submit=True):
-            with st.expander("Parking restrictions (optional)"):
-                st.caption("Record what the sign or official information says. Leave uncertain details as Unknown.")
-                vehicles = st.multiselect("Vehicle types explicitly allowed", ["Car", "Motorcycle", "Motorhome / campervan", "Van"], help="Leave empty when the vehicle types are unclear.")
-                access = st.selectbox("Reserved access", ["Unknown", "No reserved access stated", "Electric vehicles only", "Authorized shared cars only", "Electric AND authorized shared cars", "Electric OR authorized shared cars", "Disabled parking permit", "Residents / permit holders"])
-                charging = st.selectbox("Charging condition", ["Unknown", "Charging required", "Charging optional", "No charger"])
-                conditions = st.text_input("Hours, payment and maximum stay", max_chars=240, placeholder="For example, free on Sundays; maximum 2 hours")
-                dimensions = st.text_input("Height, length or weight limits", max_chars=160, placeholder="For example, maximum height 2.1 m")
-                motorhome = st.selectbox("Motorhome parking permission", ["Unknown", "Allowed", "Prohibited", "Conditional — see hours and restrictions"])
-                overnight = st.selectbox("Overnight stay / camping permission", ["Unknown", "Overnight stay explicitly allowed", "Camping explicitly allowed", "Prohibited", "Conditional — see hours and restrictions"])
-                source = st.text_input("Official information URL (optional)", max_chars=500)
-                checked = st.checkbox("I checked these conditions on site today")
-                restriction_details = {
-                    "Vehicle types": vehicles, "Reserved access": access, "Charging": charging,
-                    "Hours and payment": conditions, "Size limits": dimensions,
-                    "Motorhome parking": motorhome, "Overnight / camping": overnight,
-                    "Source": source, "Checked on site": datetime.now().date().isoformat() if checked else "",
-                }
+        if step == 3:
+            # Form with just the submit button
+            with st.form("quick_report_form", border=True, clear_on_submit=True):
+                with st.expander("Parking restrictions (optional)"):
+                    st.caption("Record what the sign or official information says. Leave uncertain details as Unknown.")
+                    vehicles = st.multiselect("Vehicle types explicitly allowed", ["Car", "Motorcycle", "Motorhome / campervan", "Van"], help="Leave empty when the vehicle types are unclear.")
+                    access = st.selectbox("Reserved access", ["Unknown", "No reserved access stated", "Electric vehicles only", "Authorized shared cars only", "Electric AND authorized shared cars", "Electric OR authorized shared cars", "Disabled parking permit", "Residents / permit holders"])
+                    charging = st.selectbox("Charging condition", ["Unknown", "Charging required", "Charging optional", "No charger"])
+                    conditions = st.text_input("Hours, payment and maximum stay", max_chars=240, placeholder="For example, free on Sundays; maximum 2 hours")
+                    dimensions = st.text_input("Height, length or weight limits", max_chars=160, placeholder="For example, maximum height 2.1 m")
+                    motorhome = st.selectbox("Motorhome parking permission", ["Unknown", "Allowed", "Prohibited", "Conditional — see hours and restrictions"])
+                    overnight = st.selectbox("Overnight stay / camping permission", ["Unknown", "Overnight stay explicitly allowed", "Camping explicitly allowed", "Prohibited", "Conditional — see hours and restrictions"])
+                    source = st.text_input("Official information URL (optional)", max_chars=500)
+                    checked = st.checkbox("I checked these conditions on site today")
+                    restriction_details = {
+                        "Vehicle types": vehicles, "Reserved access": access, "Charging": charging,
+                        "Hours and payment": conditions, "Size limits": dimensions,
+                        "Motorhome parking": motorhome, "Overnight / camping": overnight,
+                        "Source": source, "Checked on site": datetime.now().date().isoformat() if checked else "",
+                    }
 
-            st.caption("By submitting, you confirm your report is lawful, non-abusive, and does not include personal data.")
+                st.caption("By submitting, you confirm your report is lawful, non-abusive, and does not include personal data.")
 
-            confirm_location = st.checkbox("I confirm the selected map location is correct", key="location_confirmation")
-            submitted = st.form_submit_button(
-                "Submit report", use_container_width=True, type="primary", disabled=not location_selected
-            )
+                confirm_location = st.checkbox("I confirm the selected map location is correct", key="location_confirmation")
+                submitted = st.form_submit_button(
+                    "Submit report", use_container_width=True, type="primary", disabled=not location_selected
+                )
 
-            if submitted and not (location_selected and confirm_location):
-                st.error("Select a location on the map and confirm it before submitting.")
-            elif submitted:
-                add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, st.session_state.report_desc, restriction_details)
-                st.success("✅ Report submitted! Thank you for helping the community.", icon="✅")
-                st.session_state.report_in_progress = False
-                st.session_state.reset_location_confirmation = True
-                st.session_state.report_desc = next(iter(presets.values()))
-                st.rerun()
+                if submitted and not (location_selected and confirm_location):
+                    st.error("Select a location on the map and confirm it before submitting.")
+                elif submitted:
+                    add_report(st.session_state.report_lat, st.session_state.report_lng, issue_type, st.session_state.report_desc, restriction_details)
+                    st.session_state.report_saved = True
+                    st.session_state.report_step = 1
+                    st.session_state.report_in_progress = False
+                    st.session_state.reset_location_confirmation = True
+                    st.rerun()
     
     # Show reports near clicked location for voting
     if map_data and map_data['last_clicked']:
