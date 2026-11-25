@@ -4,9 +4,9 @@
   <img src="assets/signspotlogo-transparent.png" alt="SignSpot — spot we trust" width="280">
 </p>
 
-**Find parking. Report unclear signs.**
+**Community-powered parking information**
 
-SignSpot is a community mapping app for sharing free-parking locations and reporting signs that are hidden, damaged, missing, or difficult to understand. Contributors can mark a single location or highlight an area, record the conditions shown on a sign, and give feedback on existing reports.
+Find reported free-parking locations, understand restrictions, and flag unclear signs. SignSpot is a community mapping app where contributors can mark a single location or highlight an area, record parking conditions, and give feedback on existing reports.
 
 [Open SignSpot](https://signspot.streamlit.app/) · [Report an issue](https://github.com/ramtinz/SignSpot/issues) · [Cite the project](#citation)
 
