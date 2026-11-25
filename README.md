@@ -1,103 +1,81 @@
-# 🅿️ SignSpot
+# SignSpot
 
-![SignSpot Logo](assets/signspotlogo-transparent.png)
+<p align="center">
+  <img src="assets/signspotlogo-transparent.png" alt="SignSpot — spot we trust" width="280">
+</p>
 
-> **Community-driven app to find free parking and report problematic paid parking worldwide**
+**Find parking. Report unclear signs.**
 
-🚀 **[Launch App →](https://signspot.streamlit.app/)**
+SignSpot is a community mapping app for sharing free-parking locations and reporting signs that are hidden, damaged, missing, or difficult to understand. Contributors can mark a single location or highlight an area, record the conditions shown on a sign, and give feedback on existing reports.
+
+[Open SignSpot](https://signspot.streamlit.app/) · [Report an issue](https://github.com/ramtinz/SignSpot/issues) · [Cite the project](#citation)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18874701.svg)](https://doi.org/10.5281/zenodo.18874701)
 
-## What is SignSpot?
+## Why SignSpot?
 
-A **unique community-driven app** that fills the gaps left by traditional parking apps. While most parking apps only show where you can park with payment, SignSpot helps you:
+Parking information can be difficult to interpret on the ground. A sign may be obscured, its wording unclear, or its conditions limited to certain hours or vehicles. SignSpot gives people a way to record those observations at the location where they matter and share them with other drivers.
 
-- 🚩 **Flag problematic parking signs** - Report hidden, faded, broken, or confusing signs that other apps can't track
-- 🆓 **Share free parking spots** - Find and report free parking areas that commercial apps often miss
-- 📍 **Report missing information** - Flag areas where parking availability is unclear — a capability traditional parking apps don't provide
-- 🗳️ **Community verification** - Vote on reports to build an accurate, real-time parking map
+Use the map to explore reported free-parking locations, identify sign issues, and review restrictions before visiting a location. Each report can describe an individual spot or a larger area covered by the same conditions.
 
-**The Problem**: Traditional parking apps show paid zones but often have incomplete data and don't allow users to flag areas with missing or unclear parking information.
+## Add a report in three steps
 
-**The Solution**: SignSpot is a crowdsourced map where drivers report and vote on parking areas worldwide. Find free spots, warn others about tricky paid parking, and help everyone navigate complex parking landscapes.
+1. **Choose a location.** Select a city, then choose **Mark a spot** and tap the map, or choose **Highlight area** and drag over the relevant spaces. Select **Use selected location** to continue.
+2. **Describe the spot.** Choose **Free parking** or **Unclear or damaged sign**, select a reason, and choose **Continue to review**.
+3. **Review and submit.** Add any known restrictions, confirm the location, and submit. The app displays a confirmation after saving.
 
-## 🎯 Key Features
+To explore existing contributions, use the map filters or open **Community reports**. Reports include community agreement and disagreement counts.
 
-- 🗺️ **Interactive Map** - Click anywhere to report parking
-- 🔴 **Paid Parking (Problematic)** - Hidden, faded, damaged, or unclear paid parking signs
-- 🟢 **Free Parking** - Free parking spots (great finds!)
-- 👍👎 **Vote on Reports** - Upvote accurate reports, downvote incorrect ones
-- 🚩 **Flag Spam** - Community moderation for data quality
-- 📊 **Trust Scores** - See agreement % and net votes
-- 💾 **Real-time Updates** - All reports stored and synced instantly
+### Highlight an area
 
-## What to Report
+The highlighter works like a thick marker. Select a stroke width of **4, 8, 12, or 20 metres**, then drag to mark the parking spaces. Add several strokes if needed, use **Undo stroke** to remove the latest one, or **Clear selection** to start again. Switch to **Move map** to pan and zoom.
 
-**🔴 Paid Parking (Report these to warn others):**
-- Hidden parking signs (behind trees, bushes, poles)
-- Faded or unclear signs (hard to read)
-- Missing signs (parking is paid but no sign visible)
-- Damaged signs (broken or vandalized)
+The highlighted ground area retains its dimensions when zooming. Saved areas appear as shaded boundaries. Include only spaces covered by the same parking conditions.
 
-**🟢 Free Parking (Great finds!):**
-- Street parking with no paid signs
-- Free parking zones
-- Community-verified free spots
+### Record parking conditions
 
-Highlighting works like a thick marker. Choose a width of 4, 8, 12, or 20 metres and drag to add strokes. **Undo stroke** removes the latest stroke, **Clear selection** starts again, and **Move map** lets you pan or zoom. The highlighted ground area stays the same size as you zoom. Include only spaces covered by the same parking conditions. Saved areas appear as shaded boundaries on the map.
+Open **Parking restrictions (optional)** to add the details you can confirm.
 
-## Parking restrictions
+| Detail | Examples |
+| --- | --- |
+| Vehicle types | Cars, motorcycles, vans, motorhomes or campervans |
+| Reserved access | Electric vehicles, authorized shared cars, residents, disabled parking permits |
+| Charging | Required, optional, or no charger |
+| Hours and payment | Applicable days, free periods, payment conditions, maximum stay |
+| Size limits | Height, length, or weight restrictions |
+| Motorhomes | Separate parking and overnight/camping permissions |
+| Supporting information | An official information URL and date checked on site |
 
-When adding a report, open **Parking restrictions (optional)** to record vehicle types, reserved access, charging requirements, hours, payment, size limits, and an official information URL. Electric **AND** authorized shared cars and electric **OR** authorized shared cars have separate options. Motorhome parking and overnight/camping permission are recorded separately. Use **Unknown** for conditions you cannot confirm.
+The access options distinguish **electric AND authorized shared cars** from **electric OR authorized shared cars**. Leave uncertain details as **Unknown**. Restrictions appear in map popups and the report list; older reports display **Restrictions not recorded**.
 
-Restrictions appear in map popups and the community reports list. Reports created before these fields were introduced show **Restrictions not recorded**.
+## Run locally
 
-## 🏃 Quick Start
+Use Python 3.11 and create a separate environment.
 
-### Online (Recommended)
-Visit **[signspot.streamlit.app](https://signspot.streamlit.app/)** - No installation needed!
-
-### Run Locally
 ```bash
 git clone https://github.com/ramtinz/SignSpot.git
 cd SignSpot
-pip install -r requirements.txt
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 streamlit run main.py
 ```
 
-## 📖 How to Use
+On Windows, activate the environment with `.venv\Scripts\Activate.ps1` in PowerShell.
 
-1. **Choose a location** — Select your city. Choose **Mark a spot** and tap, or **Highlight area** and drag over the parking spaces. Confirm with **Use selected location**.
-2. **Describe the spot** — Choose free parking or a sign issue and a reason, then select **Continue to review**.
-3. **Review and submit** — Add optional restrictions, confirm the map location, and submit. A confirmation appears after saving.
+### Implementation and storage
 
-Use **Community reports** to browse and vote on existing reports.
+SignSpot uses Streamlit for the interface, Leaflet and OpenStreetMap for the map, and Turf for geographic highlighter strokes. The map is packaged as a local Streamlit component and requires no frontend build step.
 
-## 🛠️ Tech Stack
+Reports, votes, and area boundaries are stored in `parking_reports.db`, which is created automatically and excluded from Git. The current hosted app uses local SQLite storage. Durable storage across hosted restarts and redeployments remains a deployment improvement.
 
-- **Framework**: Streamlit
-- **Maps**: Leaflet + OpenStreetMap, with Turf for geographic highlighter strokes
-- **Map integration**: Local Streamlit component; no frontend build step
-- **Database**: SQLite
-- **Hosting**: Streamlit Cloud
+## Feedback and collaboration
 
-## 📄 License
+Suggestions, bug reports, and contributions are welcome through [GitHub Issues](https://github.com/ramtinz/SignSpot/issues). For collaboration or commercial licensing enquiries, contact **ramtin.zargari AT gmail.com**.
 
-Non-Commercial License © 2026 Ramtin Zargari Marandi
+Developed by [Ramtin Zargari Marandi, PhD](https://www.linkedin.com/in/rzm/).
 
-Free for non-commercial use. Commercial use requires permission. See [LICENSE](LICENSE) for details.
-
-## 🤝 Collaboration & Enquiries
-
-For collaboration, feedback, or project enquiries, contact:
-
-**ramtin.zargari AT gmail.com**
-
-## 📚 Citation & DOI
-
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18874701.svg)](https://doi.org/10.5281/zenodo.18874701)
-
-To cite this project:
+## Citation
 
 ```bibtex
 @software{zargari_marandi_2026_signspot,
@@ -110,16 +88,16 @@ To cite this project:
 }
 ```
 
-Citation metadata is also available in [CITATION.cff](CITATION.cff).
+Machine-readable citation metadata is available in [CITATION.cff](CITATION.cff).
 
-## ⚠️ Disclaimer
+## License
+
+SignSpot is available under a custom non-commercial license. Non-commercial use is permitted under its terms; commercial use requires permission. See [LICENSE](LICENSE).
+
+Leaflet and Turf retain their own licenses. Their notices are included in [parking_map/frontend/vendor](parking_map/frontend/vendor).
+
+## Use and responsibility
 
 **Use at your own risk.** SignSpot is a crowdsourced app - data accuracy depends on community contributions. Always verify parking rules yourself before parking.
 
 **Legal Responsibility:** Users are solely responsible for ensuring that their use of SignSpot complies with applicable laws and regulations in their country and local jurisdiction. The use of this app is intended only for legal purposes. The developer assumes no responsibility for any legal consequences resulting from users' use of the app in violation of local, regional, or national laws.
-
----
-
-**Find free parking, warn others about tricky spots! 🅿️✅**
-
-The map component includes Leaflet and Turf, each under its own license. Their notices are included in [parking_map/frontend/vendor](parking_map/frontend/vendor).
